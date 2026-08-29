@@ -1,0 +1,69 @@
+Build a full-stack web application called "NGO Directory and Social Impact 
+Networking Platform" for a district-level government initiative.
+
+PURPOSE:
+Create a centralized digital repository of NGOs where the public, donors, 
+volunteers, and government officials can discover NGOs, their activities, 
+expertise, and service regions — all in one searchable platform.
+
+CORE FEATURES:
+
+1. NGO Registration & Profile
+   - NGOs can sign up with: Name, Registration Number, Focus Area 
+     (Education, Health, Environment, Women Empowerment, Child Welfare, etc.), 
+     Service Region/Villages, Contact Info, Website/Social links, Logo/Photo, 
+     and a short description.
+   - Status field: "Pending" until admin approves.
+
+2. Public Search & Directory Page
+   - Search bar + filters by: Category, Location/Region, and Verified status.
+   - Grid/list view of NGO cards showing name, category, region, and a 
+     "View Profile" button.
+
+3. NGO Profile Page
+   - Full details, focus areas, service region (optionally shown on a map), 
+     contact info, and a live feed of their activities/projects.
+
+4. Activity & Impact Updates
+   - NGOs can post updates (title, description, date, images, impact 
+     numbers like "beneficiaries reached").
+   - Displayed chronologically on their profile.
+
+5. Connect/Collaborate Feature
+   - Logged-in users (donors, volunteers, other NGOs) can click "Connect" 
+     to send a message/request to an NGO.
+   - Simple inbox for NGOs to view these requests.
+
+6. Admin Dashboard (District Authority Role)
+   - View all NGOs (pending/approved/rejected)
+   - Approve or reject new NGO registrations
+   - View analytics: total NGOs, NGOs per category, NGOs per region
+   - Export data as CSV
+
+USER ROLES:
+- Public/Guest (search & view only)
+- NGO (register, manage profile, post updates, receive connect requests)
+- Admin (approve NGOs, view analytics)
+
+TECH STACK:
+- Frontend: React + Tailwind CSS
+- Backend: Node.js + Express (REST API)
+- Database: MongoDB (Mongoose schema) 
+- Auth: JWT-based login for NGO and Admin roles
+- Optional: Google Maps API to display NGO service regions
+
+DELIVERABLES:
+1. Database schema (NGOs, Users, Activities, ConnectRequests collections)
+2. REST API endpoints (CRUD for NGOs, Activities, Auth, Admin approval)
+3. React frontend with pages: Home/Search, NGO Profile, NGO Dashboard, 
+   Admin Dashboard, Login/Register
+4. Clean, responsive UI with a professional government-portal look 
+   (blue/white theme, cards, clear typography)
+
+Start by generating the database schema and API routes, then build the 
+frontend pages one by one.
+api keys :
+MONGODB_URI=mongodb+srv://bkkk727_db_user:7CEmizjTn0ww871M@cluster0.3yxtcic.mongodb.net/ngo_directory?appName=Cluster0
+JWT_SECRET=
+PORT=5000
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyBfUUn5v0jcj9q5nC3tHBpR0WOJm8hThR8

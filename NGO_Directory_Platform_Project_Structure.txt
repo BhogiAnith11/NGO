@@ -1,0 +1,112 @@
+NGO DIRECTORY AND SOCIAL IMPACT NETWORKING PLATFORM
+PROJECT FOLDER STRUCTURE (MERN Stack)
+=====================================
+
+ngo-directory-platform/
+|
+|-- backend/
+|   |-- config/
+|   |   `-- db.js                    # MongoDB connection setup
+|   |
+|   |-- models/
+|   |   |-- User.js                  # Users schema (ngo/donor/volunteer/admin)
+|   |   |-- NGO.js                   # NGO profile schema
+|   |   |-- Activity.js              # Activity/impact updates schema
+|   |   `-- ConnectRequest.js        # Connect/collaboration requests schema
+|   |
+|   |-- routes/
+|   |   |-- authRoutes.js            # /api/auth/register, /api/auth/login
+|   |   |-- ngoRoutes.js             # /api/ngos (CRUD, search, filter)
+|   |   |-- activityRoutes.js        # /api/ngos/:id/activities
+|   |   |-- connectRoutes.js         # /api/connect
+|   |   `-- adminRoutes.js           # /api/admin (approve, analytics, export)
+|   |
+|   |-- controllers/
+|   |   |-- authController.js        # Business logic for auth
+|   |   |-- ngoController.js         # Business logic for NGO CRUD
+|   |   |-- activityController.js
+|   |   |-- connectController.js
+|   |   `-- adminController.js
+|   |
+|   |-- middleware/
+|   |   |-- authMiddleware.js        # JWT verification
+|   |   |-- roleMiddleware.js        # Role-based access control
+|   |   `-- errorHandler.js          # Centralized error handling
+|   |
+|   |-- uploads/                     # Local image storage (logos, activity photos)
+|   |
+|   |-- utils/
+|   |   |-- generateToken.js         # JWT token creation
+|   |   `-- csvExport.js             # CSV export helper for admin
+|   |
+|   |-- .env                         # Environment variables (MONGODB_URI, JWT_SECRET)
+|   |-- .env.example
+|   |-- server.js                    # Entry point - Express app setup
+|   `-- package.json
+|
+|-- frontend/
+|   |-- public/
+|   |   `-- index.html
+|   |
+|   |-- src/
+|   |   |-- assets/                  # Images, icons, logos
+|   |   |
+|   |   |-- components/
+|   |   |   |-- Navbar.jsx
+|   |   |   |-- Footer.jsx
+|   |   |   |-- NGOCard.jsx          # Card shown in search grid
+|   |   |   |-- SearchFilters.jsx
+|   |   |   |-- ActivityFeed.jsx
+|   |   |   |-- ConnectButton.jsx
+|   |   |   `-- ProtectedRoute.jsx   # Role-based route guard
+|   |   |
+|   |   |-- pages/
+|   |   |   |-- Home.jsx             # Search & directory page
+|   |   |   |-- NGOProfile.jsx       # Single NGO public profile
+|   |   |   |-- Login.jsx
+|   |   |   |-- Register.jsx
+|   |   |   |-- NGODashboard.jsx     # NGO's own management panel
+|   |   |   `-- AdminDashboard.jsx   # Approvals + analytics
+|   |   |
+|   |   |-- context/
+|   |   |   `-- AuthContext.jsx      # Global auth state (user, token, role)
+|   |   |
+|   |   |-- services/
+|   |   |   `-- api.js               # Axios instance + API calls
+|   |   |
+|   |   |-- App.jsx                  # Routes definition
+|   |   |-- main.jsx                 # React entry point
+|   |   `-- index.css                # Tailwind imports
+|   |
+|   |-- .env                         # VITE_API_URL, VITE_GOOGLE_MAPS_KEY
+|   |-- tailwind.config.js
+|   |-- vite.config.js
+|   `-- package.json
+|
+|-- .gitignore
+`-- README.md
+
+
+KEY NOTES
+=========
+
+- Backend follows MVC pattern:
+    models      -> data shape
+    controllers -> business logic
+    routes      -> endpoints
+    middleware  -> auth/role guards
+
+- Frontend uses:
+    pages       -> full views (one per route)
+    components  -> reusable UI pieces, composed inside pages
+
+- context/AuthContext.jsx holds the logged-in user + JWT token globally
+  so any component can check role (ngo, admin, donor, volunteer)
+  without prop-drilling.
+
+- uploads/ on backend is fine for Phase 1 local image storage;
+  swap for Cloudinary/AWS S3/Firebase Storage later without touching
+  the rest of the structure.
+
+- .env files (backend and frontend) should never be committed to Git;
+  only .env.example should be tracked, listing required variable names.
