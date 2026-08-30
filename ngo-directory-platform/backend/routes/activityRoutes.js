@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const { protect } = require('../middleware/authMiddleware');
 const { requireRole } = require('../middleware/roleMiddleware');
-const { createActivity, getActivities } = require('../controllers/activityController');
+const { createActivity, getActivities, deleteActivity } = require('../controllers/activityController');
 
 // Multer for activity images (multiple)
 const storage = multer.diskStorage({
@@ -32,5 +32,6 @@ router.post(
   upload.array('images', 5),
   createActivity
 );
+router.delete('/:activityId', protect, requireRole('ngo'), deleteActivity);
 
 module.exports = router;

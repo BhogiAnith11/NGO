@@ -42,7 +42,10 @@ const getNGOById = asyncHandler(async (req, res) => {
     throw new Error('NGO not found');
   }
 
-  const activities = await Activity.find({ ngoId: ngo._id }).sort({
+  const activities = await Activity.find({
+    ngoId: ngo._id,
+    status: 'approved',
+  }).sort({
     date: -1,
   });
 

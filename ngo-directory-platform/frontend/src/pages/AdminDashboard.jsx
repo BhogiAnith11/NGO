@@ -8,6 +8,8 @@ import {
 import {
   adminGetNGOs, updateNGOStatus, getAnalytics, exportCSV,
   getDonations, getContacts, updateContactStatus,
+  adminGetActivities, updateActivityStatus,
+  adminGetEvents, updateEventStatus,
 } from '../services/api';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#6b7280'];
@@ -28,6 +30,8 @@ const StatCard = ({ icon, label, value, color, subtext }) => (
 const AdminDashboard = () => {
   const [tab, setTab] = useState('pending');
   const [ngos, setNgos] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [events, setEvents] = useState([]);
   const [donations, setDonations] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -45,6 +49,34 @@ const AdminDashboard = () => {
       setNgos(res.data.data || []);
     } catch {
       setNgos([]);
+    }
+  };
+
+  const handleActivityStatus = async (activityId, status) => {
+    try {
+      await updateActivityStatus(activityId, { status });
+      toast.success(`Activity ${status === 'approved' ? 'approved' : 'rejected'} successfully`);
+      await Promise.all([loadActivities(), loadAnalytics()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update activity');
+    }
+  };
+
+  const loadActivities = async () => {
+    try {
+      const res = await adminGetActivities({ status: 'pending' });
+      setActivities(res.data.data || []);
+    } catch {
+      setActivities([]);
+    }
+  };
+
+  const loadEvents = async () => {
+    try {
+      const res = await adminGetEvents({ status: 'pending' });
+      setEvents(res.data.data || []);
+    } catch {
+      setEvents([]);
     }
   };
 
@@ -76,7 +108,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([loadNGOs(), loadAnalytics(), loadDonations(), loadContacts()]);
+      await Promise.all([loadNGOs(), loadAnalytics(), loadActivities(), loadEvents(), loadDonations(), loadContacts()]);
       setLoading(false);
     };
     init();
@@ -95,6 +127,16 @@ const AdminDashboard = () => {
       toast.error(err.response?.data?.message || 'Action failed');
     } finally {
       setActionLoading((prev) => ({ ...prev, [ngoId]: false }));
+    }
+  };
+
+  const handleEventStatus = async (eventId, status) => {
+    try {
+      await updateEventStatus(eventId, { status });
+      toast.success(`Event ${status === 'approved' ? 'approved' : 'rejected'} successfully`);
+      await Promise.all([loadEvents(), loadAnalytics()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update event');
     }
   };
 
@@ -129,6 +171,10 @@ const AdminDashboard = () => {
       await loadNGOs(statusFilter);
     } else if (key === 'pending') {
       await loadNGOs('pending');
+    } else if (key === 'activities') {
+      await loadActivities();
+    } else if (key === 'events') {
+      await loadEvents();
     } else if (key === 'donations') {
       await loadDonations();
     } else if (key === 'contacts') {
@@ -201,6 +247,8 @@ const AdminDashboard = () => {
         <div className="flex gap-1.5 mb-6 bg-gray-100 rounded-xl p-1 flex-wrap">
           {[
             { key: 'pending', label: '⏳ Pending Applications', count: analytics?.pendingNGOs },
+            { key: 'activities', label: `📣 Pending Activities (${activities.length})`, count: null },
+            { key: 'events', label: `📅 Pending Events (${events.length})`, count: null },
             { key: 'ngos', label: '📋 All NGO Records', count: null },
             { key: 'donations', label: `🤝 Donations Ledger (${donations.length})`, count: null },
             { key: 'contacts', label: `✉️ Inquiries (${contacts.filter((c) => c.status === 'new').length} new)`, count: null },
@@ -242,7 +290,86 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 2: All NGOs */}
+        {/* Tab 2: Pending Activities */}
+        {tab === 'activities' && (
+          <div className="animate-fade-in space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900">
+                Pending Activity Queue ({activities.length})
+              </h2>
+            </div>
+            {activities.length === 0 ? (
+              <div className="card p-12 text-center text-gray-400 text-xs">No activity updates pending approval.</div>
+            ) : (
+              <div className="space-y-3">
+                {activities.map((act) => (
+                  <div key={act._id} className="card p-5 border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900 text-sm">{act.title}</span>
+                        <span className="badge badge-pending text-[10px]">{act.status}</span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        🏛️ {act.ngoId?.ngoName || 'NGO'} • {act.ngoId?.registrationNumber || ''} • {new Date(act.date).toLocaleDateString('en-IN')}
+                      </div>
+                      <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg leading-relaxed">
+                        {act.description}
+                      </div>
+                      {act.beneficiaryCount > 0 && (
+                        <div className="text-xs text-emerald-dark font-semibold">
+                          👥 {Number(act.beneficiaryCount).toLocaleString('en-IN')} beneficiaries reached
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 self-start md:self-center flex-shrink-0">
+                      <button onClick={() => handleActivityStatus(act._id, 'approved')} className="btn-success btn-sm text-[11px] py-1">Approve</button>
+                      <button onClick={() => handleActivityStatus(act._id, 'rejected')} className="btn-danger btn-sm text-[11px] py-1">Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 3: Pending Events */}
+        {tab === 'events' && (
+          <div className="animate-fade-in space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900">
+                Pending Event Queue ({events.length})
+              </h2>
+            </div>
+            {events.length === 0 ? (
+              <div className="card p-12 text-center text-gray-400 text-xs">No events pending approval.</div>
+            ) : (
+              <div className="space-y-3">
+                {events.map((ev) => (
+                  <div key={ev._id} className="card p-5 border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900 text-sm">{ev.title}</span>
+                        <span className="badge badge-pending text-[10px]">{ev.status}</span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        🏛️ {ev.organizer} • {new Date(ev.date).toLocaleDateString('en-IN')} • {ev.location}
+                      </div>
+                      <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg leading-relaxed">
+                        {ev.description}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 self-start md:self-center flex-shrink-0">
+                      <button onClick={() => handleEventStatus(ev._id, 'approved')} className="btn-success btn-sm text-[11px] py-1">Approve</button>
+                      <button onClick={() => handleEventStatus(ev._id, 'rejected')} className="btn-danger btn-sm text-[11px] py-1">Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: All NGOs */}
         {tab === 'ngos' && (
           <div className="animate-fade-in space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

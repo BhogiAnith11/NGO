@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
 
-const ActivityFeed = ({ activities }) => {
+const ActivityFeed = ({ activities, showDelete = false, onDelete = null }) => {
   if (!activities?.length) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -19,11 +19,22 @@ const ActivityFeed = ({ activities }) => {
         <div key={act._id} className="card p-5 animate-fade-in">
           <div className="flex items-start justify-between gap-3 mb-2">
             <h4 className="font-semibold text-gray-900">{act.title}</h4>
-            <span className="text-xs text-gray-400 whitespace-nowrap">
-              {new Date(act.date).toLocaleDateString('en-IN', {
-                year: 'numeric', month: 'short', day: 'numeric',
-              })}
-            </span>
+            <div className="flex items-center gap-2">
+              {showDelete && onDelete && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(act._id)}
+                  className="text-xs text-red-600 hover:text-red-700 font-medium"
+                >
+                  Delete
+                </button>
+              )}
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                {new Date(act.date).toLocaleDateString('en-IN', {
+                  year: 'numeric', month: 'short', day: 'numeric',
+                })}
+              </span>
+            </div>
           </div>
 
           {act.category && (

@@ -41,11 +41,12 @@ export const updateNGO = (id, formData) =>
   api.put(`/ngos/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
 // ─── Activities ──────────────────────────────────────────────────────────────
-export const getActivities = (ngoId) => api.get(`/ngos/${ngoId}/activities`);
+export const getActivities = (ngoId, params = {}) => api.get(`/ngos/${ngoId}/activities`, { params });
 export const createActivity = (ngoId, formData) =>
   api.post(`/ngos/${ngoId}/activities`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+export const deleteActivity = (ngoId, activityId) => api.delete(`/ngos/${ngoId}/activities/${activityId}`);
 
 // ─── Connect ─────────────────────────────────────────────────────────────────
 export const sendConnectRequest = (ngoId, data) => api.post(`/connect/${ngoId}`, data);
@@ -71,6 +72,10 @@ export const volunteerForEvent = (id) => api.post(`/events/${id}/volunteer`);
 // ─── Admin ───────────────────────────────────────────────────────────────────
 export const adminGetNGOs = (params) => api.get('/admin/ngos', { params });
 export const updateNGOStatus = (id, data) => api.patch(`/admin/ngos/${id}/status`, data);
+export const adminGetActivities = (params) => api.get('/admin/activities', { params });
+export const updateActivityStatus = (id, data) => api.patch(`/admin/activities/${id}/status`, data);
+export const adminGetEvents = (params) => api.get('/admin/events', { params });
+export const updateEventStatus = (id, data) => api.patch(`/admin/events/${id}/status`, data);
 export const getAnalytics = () => api.get('/admin/analytics');
 export const exportCSV = () =>
   api.get('/admin/export', { responseType: 'blob' });

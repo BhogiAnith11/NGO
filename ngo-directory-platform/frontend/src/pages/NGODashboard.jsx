@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { getMyNGO, updateNGO, createActivity, getActivities, getInbox, updateConnectStatus } from '../services/api';
+import { getMyNGO, updateNGO, createActivity, getActivities, getInbox, updateConnectStatus, deleteActivity } from '../services/api';
 import ActivityFeed from '../components/ActivityFeed';
 
 const FOCUS_AREAS = [
@@ -52,7 +52,7 @@ const NGODashboard = () => {
           serviceRegion: (ngoRes.data.data.serviceRegion || []).join(', '),
         });
         const [actRes, inboxRes] = await Promise.all([
-          getActivities(ngoRes.data.data._id),
+          getActivities(ngoRes.data.data._id, { status: 'all' }),
           getInbox(),
         ]);
         setActivities(actRes.data.data || []);
@@ -111,6 +111,18 @@ const NGODashboard = () => {
       toast.error(err.response?.data?.message || 'Failed to post activity');
     } finally {
       setActSaving(false);
+    }
+  };
+
+  const handleDeleteActivity = async (activityId) => {
+    if (!window.confirm('Delete this activity?')) return;
+
+    try {
+      await deleteActivity(ngo._id, activityId);
+      setActivities((prev) => prev.filter((item) => item._id !== activityId));
+      toast.success('Activity deleted successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete activity');
     }
   };
 
@@ -267,7 +279,7 @@ const NGODashboard = () => {
         {tab === 'activities' && (
           <div className="max-w-3xl animate-fade-in">
             <h2 className="text-lg font-bold text-gray-900 mb-5">Activity & Impact Feed</h2>
-            <ActivityFeed activities={activities} />
+            <ActivityFeed activities={activities} showDelete={true} onDelete={handleDeleteActivity} />
           </div>
         )}
 

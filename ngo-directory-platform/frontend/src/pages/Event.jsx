@@ -36,7 +36,12 @@ const Event = () => {
     loadEvents();
   }, [selectedCat]);
 
-  const handleVolunteer = async (eventId, eventTitle) => {
+  const handleVolunteer = async (eventId, eventTitle, eventType) => {
+    if (eventType === 'activity') {
+      toast.success(`"${eventTitle}" is now live in the community update feed.`);
+      return;
+    }
+
     setRsvpLoading((prev) => ({ ...prev, [eventId]: true }));
     try {
       await volunteerForEvent(eventId);
@@ -118,7 +123,7 @@ const Event = () => {
                     }}
                   />
                   <div className="absolute top-3 left-3 bg-navy/80 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-1 rounded-lg">
-                    {ev.category}
+                    {ev.type === 'activity' ? 'Community Update' : ev.category}
                   </div>
                 </div>
 
@@ -148,26 +153,36 @@ const Event = () => {
                   <div className="space-y-2 text-xs text-gray-500 mb-5 pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">📍</span>
-                      <span className="font-medium text-gray-800">{ev.location}</span>
+                      <span className="font-medium text-gray-800">{ev.location || 'Community Initiative'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">🏛️</span>
                       <span>Organizer: <strong className="text-gray-700">{ev.organizer}</strong></span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400">🙋</span>
-                      <span>Volunteers: <strong className="text-emerald-dark">{ev.volunteersRegistered || 0} registered</strong> ({ev.volunteersNeeded || 20} needed)</span>
-                    </div>
+                    {ev.type !== 'activity' && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">🙋</span>
+                        <span>Volunteers: <strong className="text-emerald-dark">{ev.volunteersRegistered || 0} registered</strong> ({ev.volunteersNeeded || 20} needed)</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleVolunteer(ev._id, ev.title)}
-                      disabled={rsvpLoading[ev._id]}
-                      className="btn-primary flex-1 justify-center text-xs py-2">
-                      {rsvpLoading[ev._id] ? 'Registering…' : 'Volunteer Now 🤝'}
-                    </button>
+                    {ev.type === 'activity' ? (
+                      <button
+                        onClick={() => toast.success(`"${ev.title}" is now live in the community update feed.`)}
+                        className="btn-primary flex-1 justify-center text-xs py-2">
+                        View Update
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleVolunteer(ev._id, ev.title, ev.type)}
+                        disabled={rsvpLoading[ev._id]}
+                        className="btn-primary flex-1 justify-center text-xs py-2">
+                        {rsvpLoading[ev._id] ? 'Registering…' : 'Volunteer Now 🤝'}
+                      </button>
+                    )}
                     <Link
                       to="/donate"
                       className="btn-secondary btn-sm px-3 justify-center text-xs"

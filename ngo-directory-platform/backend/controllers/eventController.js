@@ -5,8 +5,14 @@ const Event = require('../models/Event');
 // @route   GET /api/events
 // @access  Public
 const getEvents = asyncHandler(async (req, res) => {
-  const { category, upcoming } = req.query;
+  const { category, upcoming, status } = req.query;
   const filter = {};
+
+  if (status) {
+    filter.status = status;
+  } else {
+    filter.status = 'approved';
+  }
 
   if (category) filter.category = category;
   if (upcoming === 'true') {
@@ -14,7 +20,56 @@ const getEvents = asyncHandler(async (req, res) => {
   }
 
   const events = await Event.find(filter)
-    .populate('organizerNgoId', 'ngoName registrationNumber')
+    .populate('organizerNgoId', 'ngoName registrationNumber status')
+    .sort({ date: 1 });
+
+  const approvedActivities = await require('../models/Activity').find({ status: 'approved' })
+    .populate('ngoId', 'ngoName registrationNumber status')
+    .sort({ date: -1 });
+
+  const mappedActivities = approvedActivities.map((activity) => ({
+    _id: activity._id,
+    title: activity.title,
+    description: activity.description,
+    category: activity.category || 'Other',
+    date: activity.date,
+    location: 'Community Initiative',
+    organizer: activity.ngoId?.ngoName || 'Verified NGO',
+    organizerNgoId: activity.ngoId || null,
+    image: activity.images?.[0] || '/asset/img1.png',
+    volunteersNeeded: 0,
+    volunteersRegistered: 0,
+    contactPhone: '',
+    status: 'approved',
+    type: 'activity',
+  }));
+
+  const combined = [...events, ...mappedActivities].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let finalEvents = combined;
+  if (category) {
+    finalEvents = combined.filter((item) => item.category === category);
+  }
+
+  res.json({
+    success: true,
+    count: finalEvents.length,
+    data: finalEvents,
+  });
+});
+
+const adminGetEvents = asyncHandler(async (req, res) => {
+  const { status = 'pending' } = req.query;
+  const validStatuses = ['pending', 'approved', 'rejected'];
+
+  if (status && !validStatuses.includes(status)) {
+    res.status(400);
+    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+  }
+
+  const filter = status ? { status } : {};
+  const events = await Event.find(filter)
+    .populate('organizerNgoId', 'ngoName registrationNumber status')
     .sort({ date: 1 });
 
   res.json({
@@ -58,6 +113,7 @@ const createEvent = asyncHandler(async (req, res) => {
     volunteersNeeded: Number(volunteersNeeded) || 20,
     volunteersRegistered: 0,
     contactPhone: contactPhone || req.user.phone,
+    status: 'pending',
   });
 
   res.status(201).json({
@@ -86,8 +142,31 @@ const volunteerForEvent = asyncHandler(async (req, res) => {
   });
 });
 
+const updateEventStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const validStatuses = ['pending', 'approved', 'rejected'];
+
+  if (!validStatuses.includes(status)) {
+    res.status(400);
+    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+  }
+
+  const event = await Event.findById(req.params.id);
+  if (!event) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
+
+  event.status = status;
+  await event.save();
+
+  res.json({ success: true, data: event });
+});
+
 module.exports = {
   getEvents,
+  adminGetEvents,
   createEvent,
   volunteerForEvent,
+  updateEventStatus,
 };

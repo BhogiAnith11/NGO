@@ -37,6 +37,11 @@ const activitySchema = new mongoose.Schema(
         'Other',
       ],
     },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
   },
   { timestamps: true }
 );
