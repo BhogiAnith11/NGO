@@ -18,7 +18,8 @@ const Event = require('./models/Event');
 
 const seedData = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    await mongoose.connect(uri);
     console.log('✅ Connected to MongoDB Atlas for seeding');
 
     // Clean existing collections

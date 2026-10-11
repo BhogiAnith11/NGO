@@ -23,7 +23,7 @@ const Event = require('./models/Event');
 
 dotenv.config();
 
-// Connect to MongoDB
+// Connect to MongoDB Atlas
 connectDB();
 
 const app = express();
@@ -35,8 +35,11 @@ app.use(cors({
     if (!origin) return callback(null, true);
     // Allow any localhost port in development
     if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
-    // Allow the configured CLIENT_URL in production
-    if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) return callback(null, true);
+    // If CLIENT_URL is not configured or is wildcard, allow all origins
+    if (!process.env.CLIENT_URL || process.env.CLIENT_URL === '*') return callback(null, true);
+    // Allow configured CLIENT_URL(s) (handles comma-separated list and strips trailing slashes)
+    const allowedOrigins = process.env.CLIENT_URL.split(',').map((u) => u.trim().replace(/\/$/, ''));
+    if (allowedOrigins.includes(origin.replace(/\/$/, ''))) return callback(null, true);
     callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,

@@ -23,7 +23,8 @@ const User = mongoose.model('User', userSchema);
 
 const seed = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    await mongoose.connect(uri);
     console.log('✅ Connected to MongoDB');
 
     const existing = await User.findOne({ email: ADMIN_EMAIL });
