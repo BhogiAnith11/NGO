@@ -1,0 +1,13 @@
+{
+  "name": "ngo-directory-platform-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NGO Directory Platform",
+  "scripts": {
+    "postinstall": "npm install --prefix ngo-directory-platform/backend && npm install --prefix ngo-directory-platform/frontend",
+    "build": "npm run build --prefix ngo-directory-platform/frontend",
+    "start": "node ngo-directory-platform/backend/server.js",
+    "seed": "npm run seed --prefix ngo-directory-platform/backend",
+    "seed:admin": "npm run seed:admin --prefix ngo-directory-platform/backend"
+  }
+}
