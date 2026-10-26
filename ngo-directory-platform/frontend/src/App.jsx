@@ -15,6 +15,14 @@ import Donate from './pages/Donate';
 import Event from './pages/Event';
 import Contact from './pages/Contact';
 
+// Emergency Medical Assistance & Direct Donations Pages
+import EmergencyAssistance from './pages/EmergencyAssistance';
+import MedicalAssistanceProfile from './pages/MedicalAssistanceProfile';
+import CreateMedicalAssistance from './pages/CreateMedicalAssistance';
+import PatientDashboard from './pages/PatientDashboard';
+import DonorDashboard from './pages/DonorDashboard';
+import DonationHistory from './pages/DonationHistory';
+
 const App = () => {
   return (
     <BrowserRouter>
@@ -23,6 +31,7 @@ const App = () => {
           <Navbar />
           <main className="flex-1">
             <Routes>
+              {/* Existing Directory & Community Features */}
               <Route path="/" element={<Home />} />
               <Route path="/donate" element={<Donate />} />
               <Route path="/events" element={<Event />} />
@@ -46,6 +55,36 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Emergency Medical Assistance & Direct Donations Routes */}
+              <Route path="/medical-assistance" element={<EmergencyAssistance />} />
+              <Route path="/medical-assistance/new" element={<CreateMedicalAssistance />} />
+              <Route path="/medical-assistance/:id" element={<MedicalAssistanceProfile />} />
+              <Route
+                path="/patient-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <PatientDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/donor-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DonorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/donations/history"
+                element={
+                  <ProtectedRoute>
+                    <DonationHistory />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* 404 */}
               <Route
                 path="*"

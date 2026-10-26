@@ -1,112 +1,176 @@
-NGO DIRECTORY AND SOCIAL IMPACT NETWORKING PLATFORM
-PROJECT FOLDER STRUCTURE (MERN Stack)
-=====================================
-
 ngo-directory-platform/
-|
-|-- backend/
-|   |-- config/
-|   |   `-- db.js                    # MongoDB connection setup
-|   |
-|   |-- models/
-|   |   |-- User.js                  # Users schema (ngo/donor/volunteer/admin)
-|   |   |-- NGO.js                   # NGO profile schema
-|   |   |-- Activity.js              # Activity/impact updates schema
-|   |   `-- ConnectRequest.js        # Connect/collaboration requests schema
-|   |
-|   |-- routes/
-|   |   |-- authRoutes.js            # /api/auth/register, /api/auth/login
-|   |   |-- ngoRoutes.js             # /api/ngos (CRUD, search, filter)
-|   |   |-- activityRoutes.js        # /api/ngos/:id/activities
-|   |   |-- connectRoutes.js         # /api/connect
-|   |   `-- adminRoutes.js           # /api/admin (approve, analytics, export)
-|   |
-|   |-- controllers/
-|   |   |-- authController.js        # Business logic for auth
-|   |   |-- ngoController.js         # Business logic for NGO CRUD
-|   |   |-- activityController.js
-|   |   |-- connectController.js
-|   |   `-- adminController.js
-|   |
-|   |-- middleware/
-|   |   |-- authMiddleware.js        # JWT verification
-|   |   |-- roleMiddleware.js        # Role-based access control
-|   |   `-- errorHandler.js          # Centralized error handling
-|   |
-|   |-- uploads/                     # Local image storage (logos, activity photos)
-|   |
-|   |-- utils/
-|   |   |-- generateToken.js         # JWT token creation
-|   |   `-- csvExport.js             # CSV export helper for admin
-|   |
-|   |-- .env                         # Environment variables (MONGODB_URI, JWT_SECRET)
-|   |-- .env.example
-|   |-- server.js                    # Entry point - Express app setup
-|   `-- package.json
-|
-|-- frontend/
-|   |-- public/
-|   |   `-- index.html
-|   |
-|   |-- src/
-|   |   |-- assets/                  # Images, icons, logos
-|   |   |
-|   |   |-- components/
-|   |   |   |-- Navbar.jsx
-|   |   |   |-- Footer.jsx
-|   |   |   |-- NGOCard.jsx          # Card shown in search grid
-|   |   |   |-- SearchFilters.jsx
-|   |   |   |-- ActivityFeed.jsx
-|   |   |   |-- ConnectButton.jsx
-|   |   |   `-- ProtectedRoute.jsx   # Role-based route guard
-|   |   |
-|   |   |-- pages/
-|   |   |   |-- Home.jsx             # Search & directory page
-|   |   |   |-- NGOProfile.jsx       # Single NGO public profile
-|   |   |   |-- Login.jsx
-|   |   |   |-- Register.jsx
-|   |   |   |-- NGODashboard.jsx     # NGO's own management panel
-|   |   |   `-- AdminDashboard.jsx   # Approvals + analytics
-|   |   |
-|   |   |-- context/
-|   |   |   `-- AuthContext.jsx      # Global auth state (user, token, role)
-|   |   |
-|   |   |-- services/
-|   |   |   `-- api.js               # Axios instance + API calls
-|   |   |
-|   |   |-- App.jsx                  # Routes definition
-|   |   |-- main.jsx                 # React entry point
-|   |   `-- index.css                # Tailwind imports
-|   |
-|   |-- .env                         # VITE_API_URL, VITE_GOOGLE_MAPS_KEY
-|   |-- tailwind.config.js
-|   |-- vite.config.js
-|   `-- package.json
-|
-|-- .gitignore
-`-- README.md
-
-
-KEY NOTES
-=========
-
-- Backend follows MVC pattern:
-    models      -> data shape
-    controllers -> business logic
-    routes      -> endpoints
-    middleware  -> auth/role guards
-
-- Frontend uses:
-    pages       -> full views (one per route)
-    components  -> reusable UI pieces, composed inside pages
-
-- context/AuthContext.jsx holds the logged-in user + JWT token globally
-  so any component can check role (ngo, admin, donor, volunteer)
-  without prop-drilling.
-
-- uploads/ on backend is fine for Phase 1 local image storage;
-  swap for Cloudinary/AWS S3/Firebase Storage later without touching
-  the rest of the structure.
-
-- .env files (backend and frontend) should never be committed to Git;
-  only .env.example should be tracked, listing required variable names.
+│
+├── .gitignore
+├── README.md
+├── package.json
+│
+├── backend/
+│   ├── config/
+│   │   ├── db.js
+│   │   ├── cloudinary.js
+│   │   └── razorpay.js
+│   │
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── NGO.js
+│   │   ├── Activity.js
+│   │   ├── ConnectRequest.js
+│   │   ├── MedicalAssistance.js
+│   │   ├── MedicalUpdate.js
+│   │   ├── Donation.js
+│   │   ├── PaymentWebhookEvent.js
+│   │   └── AuditLog.js
+│   │
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── ngoRoutes.js
+│   │   ├── activityRoutes.js
+│   │   ├── connectRoutes.js
+│   │   ├── medicalAssistanceRoutes.js
+│   │   ├── medicalUpdateRoutes.js
+│   │   ├── donationRoutes.js
+│   │   └── adminRoutes.js
+│   │
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── ngoController.js
+│   │   ├── activityController.js
+│   │   ├── connectController.js
+│   │   ├── medicalAssistanceController.js
+│   │   ├── medicalUpdateController.js
+│   │   ├── donationController.js
+│   │   └── adminController.js
+│   │
+│   ├── services/
+│   │   ├── authService.js
+│   │   ├── ngoService.js
+│   │   ├── medicalAssistanceService.js
+│   │   ├── donationService.js
+│   │   ├── paymentService.js
+│   │   ├── documentService.js
+│   │   ├── notificationService.js
+│   │   └── analyticsService.js
+│   │
+│   ├── middleware/
+│   │   ├── authMiddleware.js
+│   │   ├── roleMiddleware.js
+│   │   ├── uploadMiddleware.js
+│   │   ├── validationMiddleware.js
+│   │   ├── rateLimitMiddleware.js
+│   │   └── errorHandler.js
+│   │
+│   ├── validators/
+│   │   ├── authValidator.js
+│   │   ├── ngoValidator.js
+│   │   ├── medicalAssistanceValidator.js
+│   │   └── donationValidator.js
+│   │
+│   ├── utils/
+│   │   ├── generateToken.js
+│   │   ├── csvExport.js
+│   │   ├── apiResponse.js
+│   │   └── asyncHandler.js
+│   │
+│   ├── uploads/
+│   │   └── .gitkeep
+│   │
+│   ├── tests/
+│   │   ├── auth.test.js
+│   │   ├── ngo.test.js
+│   │   ├── medicalAssistance.test.js
+│   │   └── donation.test.js
+│   │
+│   ├── .env
+│   ├── .env.example
+│   ├── package.json
+│   └── server.js
+│
+└── frontend/
+    ├── public/
+    │   └── index.html
+    │
+    ├── src/
+    │   ├── assets/
+    │   │
+    │   ├── components/
+    │   │   ├── layout/
+    │   │   │   ├── Navbar.jsx
+    │   │   │   ├── Footer.jsx
+    │   │   │   └── DashboardLayout.jsx
+    │   │   │
+    │   │   ├── ngo/
+    │   │   │   ├── NGOCard.jsx
+    │   │   │   ├── SearchFilters.jsx
+    │   │   │   ├── ActivityFeed.jsx
+    │   │   │   └── ConnectButton.jsx
+    │   │   │
+    │   │   ├── medical/
+    │   │   │   ├── MedicalAssistanceCard.jsx
+    │   │   │   ├── CampaignProgress.jsx
+    │   │   │   ├── MedicalProfileForm.jsx
+    │   │   │   ├── DocumentUpload.jsx
+    │   │   │   ├── MedicalUpdateFeed.jsx
+    │   │   │   └── VerificationBadge.jsx
+    │   │   │
+    │   │   ├── donations/
+    │   │   │   ├── DonationForm.jsx
+    │   │   │   ├── PaymentCheckout.jsx
+    │   │   │   ├── DonationHistoryTable.jsx
+    │   │   │   └── DonationReceipt.jsx
+    │   │   │
+    │   │   ├── admin/
+    │   │   │   ├── ApprovalTable.jsx
+    │   │   │   ├── AnalyticsCards.jsx
+    │   │   │   └── ReportsPanel.jsx
+    │   │   │
+    │   │   └── common/
+    │   │       ├── ProtectedRoute.jsx
+    │   │       ├── LoadingSpinner.jsx
+    │   │       ├── EmptyState.jsx
+    │   │       ├── ErrorMessage.jsx
+    │   │       ├── Pagination.jsx
+    │   │       └── ConfirmationModal.jsx
+    │   │
+    │   ├── pages/
+    │   │   ├── Home.jsx
+    │   │   ├── Login.jsx
+    │   │   ├── Register.jsx
+    │   │   ├── NGOProfile.jsx
+    │   │   ├── EmergencyAssistance.jsx
+    │   │   ├── MedicalAssistanceProfile.jsx
+    │   │   ├── CreateMedicalAssistance.jsx
+    │   │   ├── NGODashboard.jsx
+    │   │   ├── DonorDashboard.jsx
+    │   │   ├── PatientDashboard.jsx
+    │   │   ├── AdminDashboard.jsx
+    │   │   ├── DonationHistory.jsx
+    │   │   └── NotFound.jsx
+    │   │
+    │   ├── context/
+    │   │   └── AuthContext.jsx
+    │   │
+    │   ├── services/
+    │   │   ├── api.js
+    │   │   ├── authService.js
+    │   │   ├── ngoService.js
+    │   │   ├── medicalAssistanceService.js
+    │   │   ├── donationService.js
+    │   │   └── adminService.js
+    │   │
+    │   ├── hooks/
+    │   │   ├── useAuth.js
+    │   │   └── usePagination.js
+    │   │
+    │   ├── utils/
+    │   │   ├── formatCurrency.js
+    │   │   └── formatDate.js
+    │   │
+    │   ├── App.jsx
+    │   ├── main.jsx
+    │   └── index.css
+    │
+    ├── .env
+    ├── .env.example
+    ├── package.json
+    ├── tailwind.config.js
+    └── vite.config.js

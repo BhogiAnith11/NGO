@@ -32,19 +32,41 @@ const Navbar = () => {
             </div>
             <div>
               <span className="font-bold text-white text-sm leading-tight block">NGO Directory</span>
-              <span className="text-blue-200 text-xs leading-tight block">District Initiative</span>
+              <span className="text-blue-200 text-xs leading-tight block">& Emergency Medical Aid</span>
             </div>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-5 lg:gap-6">
+          <nav className="hidden md:flex items-center gap-4 lg:gap-5">
             <NavLink to="/" className={linkClass} end>Directory</NavLink>
-            <NavLink to="/donate" className={linkClass}>Donate & Support</NavLink>
-            <NavLink to="/events" className={linkClass}>Events & Drives</NavLink>
-            <NavLink to="/contact" className={linkClass}>Contact Us</NavLink>
+
+            {/* Prominent Emergency Medical Assistance Nav Link */}
+            <NavLink
+              to="/medical-assistance"
+              className={({ isActive }) =>
+                `text-sm font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'text-red-200 hover:text-white hover:bg-white/10'
+                }`
+              }>
+              <span className="w-2 h-2 rounded-full bg-red-400 animate-ping inline-block" />
+              <span>Medical Aid 🩺</span>
+            </NavLink>
+
+            <NavLink to="/donate" className={linkClass}>NGO Donations</NavLink>
+            <NavLink to="/events" className={linkClass}>Drives</NavLink>
+            <NavLink to="/contact" className={linkClass}>Helpdesk</NavLink>
+
+            {user && (
+              <>
+                <NavLink to="/patient-dashboard" className={linkClass}>Patient Desk</NavLink>
+                <NavLink to="/donor-dashboard" className={linkClass}>My Donations</NavLink>
+              </>
+            )}
 
             {user?.role === 'ngo' && (
-              <NavLink to="/dashboard" className={linkClass}>My Dashboard</NavLink>
+              <NavLink to="/dashboard" className={linkClass}>My NGO</NavLink>
             )}
             {user?.role === 'admin' && (
               <NavLink to="/admin" className={linkClass}>Admin Panel</NavLink>
@@ -93,32 +115,47 @@ const Navbar = () => {
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden border-t border-navy-light py-4 space-y-3 animate-fade-in">
-            <NavLink to="/" className="block text-blue-100 hover:text-white py-2 font-medium text-sm" onClick={() => setMenuOpen(false)} end>
+          <div className="md:hidden border-t border-navy-light py-4 space-y-2 animate-fade-in text-sm">
+            <NavLink to="/" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)} end>
               Directory
             </NavLink>
-            <NavLink to="/donate" className="block text-blue-100 hover:text-white py-2 font-medium text-sm" onClick={() => setMenuOpen(false)}>
-              Donate & Support
+            <NavLink to="/medical-assistance" className="block text-red-200 hover:text-white py-1.5 font-bold" onClick={() => setMenuOpen(false)}>
+              🚨 Emergency Medical Assistance
             </NavLink>
-            <NavLink to="/events" className="block text-blue-100 hover:text-white py-2 font-medium text-sm" onClick={() => setMenuOpen(false)}>
+            <NavLink to="/donate" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
+              NGO Donations
+            </NavLink>
+            <NavLink to="/events" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
               Events & Drives
             </NavLink>
-            <NavLink to="/contact" className="block text-blue-100 hover:text-white py-2 font-medium text-sm" onClick={() => setMenuOpen(false)}>
-              Contact Us
+            <NavLink to="/contact" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
+              Helpdesk & Grievance
             </NavLink>
 
+            {user && (
+              <>
+                <NavLink to="/patient-dashboard" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
+                  Patient Dashboard
+                </NavLink>
+                <NavLink to="/donor-dashboard" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
+                  My Donation Receipts
+                </NavLink>
+              </>
+            )}
+
             {user?.role === 'ngo' && (
-              <NavLink to="/dashboard" className="block text-blue-100 hover:text-white py-2 font-medium text-sm" onClick={() => setMenuOpen(false)}>
-                My Dashboard
+              <NavLink to="/dashboard" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
+                My NGO Dashboard
               </NavLink>
             )}
             {user?.role === 'admin' && (
-              <NavLink to="/admin" className="block text-blue-100 hover:text-white py-2 font-medium text-sm" onClick={() => setMenuOpen(false)}>
+              <NavLink to="/admin" className="block text-blue-100 hover:text-white py-1.5 font-medium" onClick={() => setMenuOpen(false)}>
                 Admin Panel
               </NavLink>
             )}
+
             {user ? (
-              <button onClick={handleLogout} className="w-full text-left text-red-300 hover:text-red-200 py-2 font-medium text-sm">
+              <button onClick={handleLogout} className="w-full text-left text-red-300 hover:text-red-200 py-2 font-medium text-xs">
                 Logout ({user.name})
               </button>
             ) : (

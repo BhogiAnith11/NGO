@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import NGOCard from '../components/NGOCard';
 import SearchFilters from '../components/SearchFilters';
+import MedicalAssistanceCard from '../components/medical/MedicalAssistanceCard';
+import DonationForm from '../components/donations/DonationForm';
 import { getNGOs, getStats } from '../services/api';
+import { getPublicCampaigns } from '../services/medicalAssistanceService';
 
 const FOCUS_PILLARS = [
   {
@@ -57,20 +60,20 @@ const FOCUS_PILLARS = [
 
 const FAQS = [
   {
-    q: 'How are NGOs verified on this platform?',
+    q: 'How are medical assistance requests verified on this platform?',
+    a: 'Every patient submission requires hospital diagnostic reports, treating doctor details, and hospital cost estimates. District Nodal Social Welfare and Health Officers verify the authenticity before granting public Verified Medical Assistance status.',
+  },
+  {
+    q: 'How does the direct donation system work?',
+    a: 'Donors contribute directly to verified medical campaigns via Razorpay. Transactions are authenticated server-side with HMAC cryptographic signatures and recorded directly into the patient fundraising ledger with official receipts.',
+  },
+  {
+    q: 'How are NGOs verified in the directory?',
     a: 'Every registered NGO submits its official Societies / Trust Registration Number, PAN, operational service region, and organizational mandate. The District Social Welfare Nodal Officer reviews all documentation before issuing a public Verified status.',
   },
   {
-    q: 'How can donors and CSR funds connect with verified NGOs?',
-    a: 'Corporate CSR teams and individual donors can sign up for a free Donor account, browse verified NGOs by category or taluka, and send direct collaboration proposals via the Connect feature.',
-  },
-  {
-    q: 'Can volunteers join NGO activities through this directory?',
-    a: 'Yes! Volunteers can create an account, browse field activities and impact stories, and reach out directly to NGOs operating in their local area.',
-  },
-  {
-    q: 'Is there any fee for NGOs to register on the platform?',
-    a: 'No. This platform is a digital public goods initiative funded and managed by the District Administration. NGO registration, verification, and collaboration tools are 100% free.',
+    q: 'Are patient medical documents publicly accessible?',
+    a: 'No. Patient diagnostic scans, private address, and sensitive medical documents are stored in a secured directory and are strictly accessible only to authorized district verification officers and the patient or their representative.',
   },
 ];
 
@@ -83,7 +86,10 @@ const formatNumber = (n) => {
 
 const Home = () => {
   const [ngos, setNgos] = useState([]);
+  const [medicalCampaigns, setMedicalCampaigns] = useState([]);
+  const [selectedDonationCampaign, setSelectedDonationCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [medicalLoading, setMedicalLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState('grid');
   const [openFaq, setOpenFaq] = useState(null);
@@ -93,12 +99,17 @@ const Home = () => {
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  // Fetch live platform stats
+  // Fetch live platform stats & medical spotlight
   useEffect(() => {
     getStats()
       .then((res) => setStats(res.data.data))
       .catch(() => setStats(null))
       .finally(() => setStatsLoading(false));
+
+    getPublicCampaigns({ status: 'Active', sortBy: 'most_urgent' })
+      .then((res) => setMedicalCampaigns((res.data.data || []).slice(0, 3)))
+      .catch(() => setMedicalCampaigns([]))
+      .finally(() => setMedicalLoading(false));
   }, []);
 
   const fetchNGOs = useCallback(async () => {
@@ -112,7 +123,6 @@ const Home = () => {
       const res = await getNGOs(params);
       let list = res.data.data || [];
 
-      // Client-side sorting
       if (filters.sortBy === 'name_asc') {
         list.sort((a, b) => a.ngoName.localeCompare(b.ngoName));
       } else if (filters.sortBy === 'name_desc') {
@@ -146,7 +156,7 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* 1. Hero Section */}
-      <section className="bg-gradient-to-br from-navy-dark via-navy to-primary-900 text-white py-20 relative overflow-hidden">
+      <section className="bg-gradient-to-br from-navy-dark via-navy to-primary-900 text-white py-16 md:py-20 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-10 left-10 w-96 h-96 bg-primary-400 rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-emerald rounded-full blur-3xl" />
@@ -155,42 +165,57 @@ const Home = () => {
         <div className="container-main relative">
           <div className="max-w-3xl">
             {/* Government seal badge */}
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-1.5 mb-6 border border-white/20 shadow-xs">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-1.5 mb-5 border border-white/20 shadow-xs">
               <span className="text-yellow-400 text-sm">🏛️</span>
               <span className="text-xs md:text-sm text-blue-100 font-semibold tracking-wide">
-                District Administration · Social Welfare Digital Initiative
+                District Administration · Social Welfare & Medical Emergency Portal
               </span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight tracking-tight mb-4">
               District NGO Directory &{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-300 to-emerald-light">
-                Social Impact Network
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-300 via-blue-200 to-emerald-light">
+                Emergency Medical Assistance
               </span>
             </h1>
-            <p className="text-blue-100/90 text-base md:text-lg leading-relaxed mb-8 max-w-2xl font-light">
-              A unified government repository connecting citizens, CSR donors, volunteers, and district authorities with verified Non-Governmental Organizations across all welfare sectors.
+            <p className="text-blue-100/90 text-sm md:text-base leading-relaxed mb-8 max-w-2xl font-light">
+              A verified government digital ecosystem connecting citizens with authenticated Non-Governmental
+              Organizations and providing direct emergency donations for critically injured patients and urgent medical surgeries.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3.5">
-              <a href="#directory" className="btn-primary text-sm md:text-base px-6 py-3 shadow-md">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Search NGO Directory
+            {/* 4 PROMINENT ACTION POINTS */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <a
+                href="#directory"
+                className="card p-3.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-center backdrop-blur-md transition-all group">
+                <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">🔍</div>
+                <div className="text-xs font-bold text-white">Find an NGO</div>
+                <div className="text-[10px] text-blue-200">Search directory</div>
               </a>
-              <Link to="/register" className="btn-secondary text-sm md:text-base px-6 py-3">
-                Register Your NGO
-              </Link>
-            </div>
 
-            <div className="mt-8 flex items-center gap-6 text-xs text-blue-200/80">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald"></span> 100% District Verified Profiles
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary-400"></span> Live Impact Tracking
-              </span>
+              <Link
+                to="/medical-assistance/new"
+                className="card p-3.5 bg-red-500/20 hover:bg-red-500/30 border border-red-400/40 rounded-xl text-center backdrop-blur-md transition-all group">
+                <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">🩺</div>
+                <div className="text-xs font-bold text-red-100">Get Medical Aid</div>
+                <div className="text-[10px] text-red-200">Submit patient case</div>
+              </Link>
+
+              <Link
+                to="/medical-assistance"
+                className="card p-3.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 rounded-xl text-center backdrop-blur-md transition-all group">
+                <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">❤️</div>
+                <div className="text-xs font-bold text-emerald-100">Support a Patient</div>
+                <div className="text-[10px] text-emerald-200">Direct Razorpay aid</div>
+              </Link>
+
+              <Link
+                to="/register"
+                className="card p-3.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-center backdrop-blur-md transition-all group">
+                <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">🏛️</div>
+                <div className="text-xs font-bold text-white">Register an NGO</div>
+                <div className="text-[10px] text-blue-200">District audit onboarding</div>
+              </Link>
             </div>
           </div>
         </div>
@@ -208,10 +233,10 @@ const Home = () => {
                 subtext: 'District non-profits',
               },
               {
-                icon: '🎯',
-                label: 'Core Focus Areas',
-                value: statsLoading ? null : formatNumber(stats?.focusAreaCount),
-                subtext: 'Welfare domains',
+                icon: '🩺',
+                label: 'Verified Medical Cases',
+                value: statsLoading ? null : formatNumber(stats?.approvedMedicalCampaigns || stats?.totalMedicalCampaigns),
+                subtext: 'Emergency patient aid',
               },
               {
                 icon: '📍',
@@ -241,7 +266,60 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. Core Focus Pillars Grid */}
+      {/* 3. PROMINENT EMERGENCY MEDICAL ASSISTANCE SPOTLIGHT */}
+      <section className="py-14 bg-gradient-to-b from-red-50/40 via-surface to-surface border-b border-gray-200/60">
+        <div className="container-main space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold mb-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                <span>Urgent Emergency Cases</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900">
+                Support Patients Needing Immediate Treatment
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1 max-w-xl">
+                Every listed campaign is audited against hospital billing certificates. Contribute directly via
+                Razorpay test mode with verified online receipts.
+              </p>
+            </div>
+
+            <Link
+              to="/medical-assistance"
+              className="btn-primary btn-sm text-xs px-4 py-2 self-start sm:self-auto font-semibold">
+              View All Medical Cases ({medicalCampaigns.length}+) →
+            </Link>
+          </div>
+
+          {medicalLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="card p-5 animate-pulse bg-white border border-gray-100 space-y-3">
+                  <div className="h-12 bg-gray-100 rounded-xl" />
+                  <div className="h-4 bg-gray-100 rounded w-3/4" />
+                  <div className="h-10 bg-gray-100 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : medicalCampaigns.length === 0 ? (
+            <div className="card p-8 text-center bg-white border border-dashed border-gray-200 text-xs text-gray-500">
+              No active urgent medical cases at this moment.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {medicalCampaigns.map((c) => (
+                <MedicalAssistanceCard
+                  key={c._id}
+                  campaign={c}
+                  onDonateClick={(campaign) => setSelectedDonationCampaign(campaign)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 4. Core Focus Pillars Grid */}
       <section className="py-14 bg-gray-50/70 border-b border-gray-100">
         <div className="container-main">
           <div className="text-center max-w-2xl mx-auto mb-10">
@@ -265,7 +343,7 @@ const Home = () => {
                   className={`card p-5 text-left transition-all duration-200 border ${
                     isSelected
                       ? 'border-primary-600 bg-primary-50/50 ring-2 ring-primary-500'
-                      : 'hover:border-primary-200 hover:shadow-md'
+                      : 'hover:border-primary-200 hover:shadow-md bg-white'
                   }`}>
                   <div className="text-3xl mb-3">{pillar.icon}</div>
                   <h3 className="font-bold text-gray-900 text-base mb-1.5 flex items-center justify-between">
@@ -280,7 +358,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. Public Directory Section */}
+      {/* 5. Public NGO Directory Section */}
       <section id="directory" className="flex-1 bg-surface py-12 scroll-mt-6">
         <div className="container-main">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -309,7 +387,7 @@ const Home = () => {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="card p-5 animate-pulse border border-gray-100">
+                <div key={i} className="card p-5 animate-pulse border border-gray-100 bg-white">
                   <div className="flex gap-3 mb-4">
                     <div className="w-12 h-12 bg-gray-100 rounded-xl" />
                     <div className="flex-1 space-y-2">
@@ -325,7 +403,7 @@ const Home = () => {
               ))}
             </div>
           ) : displayed.length === 0 ? (
-            <div className="card p-14 text-center border border-dashed border-gray-200">
+            <div className="card p-14 text-center border border-dashed border-gray-200 bg-white">
               <div className="w-16 h-16 bg-blue-50 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                 🔍
               </div>
@@ -356,86 +434,8 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5. How the Platform Works Workflow */}
-      <section className="py-16 bg-white border-t border-b border-gray-100">
-        <div className="container-main">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="badge bg-emerald/10 text-emerald-dark text-xs px-3 py-1 mb-2">
-              Government Transparency
-            </span>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">How the Initiative Operates</h2>
-            <p className="text-gray-500 text-sm mt-2">
-              A 3-step structured verification and collaboration process for all stakeholders.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card p-6 border border-gray-100 text-center relative">
-              <div className="w-12 h-12 bg-primary-50 text-primary-700 rounded-2xl flex items-center justify-center font-bold text-lg mx-auto mb-4">
-                1
-              </div>
-              <h3 className="font-bold text-gray-900 text-base mb-2">NGO Registration & Audit</h3>
-              <p className="text-gray-500 text-xs leading-relaxed">
-                Non-profits register their societies / trust certificates, target tehsils, and core domains. Registrations enter a secure pending state until official review.
-              </p>
-            </div>
-
-            <div className="card p-6 border border-gray-100 text-center relative">
-              <div className="w-12 h-12 bg-emerald/10 text-emerald-dark rounded-2xl flex items-center justify-center font-bold text-lg mx-auto mb-4">
-                2
-              </div>
-              <h3 className="font-bold text-gray-900 text-base mb-2">District Nodal Verification</h3>
-              <p className="text-gray-500 text-xs leading-relaxed">
-                The District Social Welfare Officer authenticates registration papers, monitors service region coverage, and grants official Verified status.
-              </p>
-            </div>
-
-            <div className="card p-6 border border-gray-100 text-center relative">
-              <div className="w-12 h-12 bg-purple-50 text-purple-700 rounded-2xl flex items-center justify-center font-bold text-lg mx-auto mb-4">
-                3
-              </div>
-              <h3 className="font-bold text-gray-900 text-base mb-2">Direct CSR & Impact Network</h3>
-              <p className="text-gray-500 text-xs leading-relaxed">
-                Citizens, corporate CSR donors, and volunteer networks collaborate directly, send proposals, and track field project outcomes transparently.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. District Administration Notice & Helpline Seal */}
-      <section className="py-12 bg-gradient-to-r from-navy via-navy to-primary-950 text-white">
-        <div className="container-main">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-            <div className="md:col-span-2">
-              <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3 py-1 text-xs text-blue-200 mb-3">
-                🏛️ Official Department Notice
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold mb-2">
-                District Social Welfare & Planning Department
-              </h3>
-              <p className="text-blue-200 text-sm leading-relaxed max-w-xl">
-                This digital repository prevents duplicate welfare resource allocation across overlapping villages and ensures genuine non-profits receive structured institutional support.
-              </p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/15">
-              <div className="text-xs text-blue-200 mb-1 font-semibold uppercase tracking-wider">
-                Nodal Verification Desk
-              </div>
-              <div className="text-lg font-bold text-white mb-2">District Collectorate Office</div>
-              <div className="text-xs text-blue-100 space-y-1.5">
-                <div>📞 Helpline: +91 (0253) 2578900 / 901</div>
-                <div>✉️ Email: welfare.district@gov.in</div>
-                <div>📍 Timings: Mon–Fri, 10:00 AM – 5:30 PM</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. Frequently Asked Questions (FAQ) */}
-      <section className="py-14 bg-surface">
+      {/* 6. Frequently Asked Questions (FAQ) */}
+      <section className="py-14 bg-surface border-t border-gray-100">
         <div className="container-main max-w-4xl">
           <div className="text-center mb-10">
             <span className="badge bg-primary-50 text-primary-700 text-xs px-3 py-1 mb-2">
@@ -443,7 +443,7 @@ const Home = () => {
             </span>
             <h2 className="text-2xl font-bold text-gray-900">Frequently Asked Questions</h2>
             <p className="text-gray-500 text-sm mt-1">
-              Key information for NGOs, donors, volunteers, and citizen partners.
+              Key information on NGO verification, emergency assistance applications, and direct donations.
             </p>
           </div>
 
@@ -451,7 +451,7 @@ const Home = () => {
             {FAQS.map((faq, index) => {
               const isOpen = openFaq === index;
               return (
-                <div key={index} className="card border border-gray-100 overflow-hidden">
+                <div key={index} className="card border border-gray-200/80 overflow-hidden bg-white">
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? null : index)}
@@ -473,25 +473,18 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 8. Bottom CTA Banner */}
-      <section className="py-12 bg-primary-600 text-white">
-        <div className="container-main text-center max-w-2xl">
-          <h2 className="text-2xl md:text-3xl font-extrabold mb-3">
-            Are You an Active NGO in the District?
-          </h2>
-          <p className="text-blue-100 text-sm mb-6 leading-relaxed">
-            Register your organization today to gain official verification, reach CSR corporate donors, and coordinate with district welfare programs.
-          </p>
-          <div className="flex justify-center gap-3">
-            <Link to="/register" className="btn-secondary text-sm px-6 py-2.5">
-              Submit NGO Profile →
-            </Link>
-            <Link to="/login" className="px-5 py-2.5 rounded-xl border border-white/30 text-white hover:bg-white/10 text-sm font-semibold transition-colors">
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Donation Modal on Home */}
+      {selectedDonationCampaign && (
+        <DonationForm
+          campaign={selectedDonationCampaign}
+          onClose={() => setSelectedDonationCampaign(null)}
+          onDonationComplete={() => {
+            getPublicCampaigns({ status: 'Active', sortBy: 'most_urgent' })
+              .then((res) => setMedicalCampaigns((res.data.data || []).slice(0, 3)))
+              .catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 };

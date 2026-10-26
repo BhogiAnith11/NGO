@@ -1,69 +1,884 @@
-Build a full-stack web application called "NGO Directory and Social Impact 
-Networking Platform" for a district-level government initiative.
+# PROJECT: NGO DIRECTORY, SOCIAL IMPACT NETWORKING, AND EMERGENCY MEDICAL ASSISTANCE PLATFORM
 
-PURPOSE:
-Create a centralized digital repository of NGOs where the public, donors, 
-volunteers, and government officials can discover NGOs, their activities, 
-expertise, and service regions — all in one searchable platform.
+## 1. PROJECT OVERVIEW
 
-CORE FEATURES:
+Build a complete, production-oriented, full-stack web application called:
 
-1. NGO Registration & Profile
-   - NGOs can sign up with: Name, Registration Number, Focus Area 
-     (Education, Health, Environment, Women Empowerment, Child Welfare, etc.), 
-     Service Region/Villages, Contact Info, Website/Social links, Logo/Photo, 
-     and a short description.
-   - Status field: "Pending" until admin approves.
+**NGO Directory and Social Impact Networking Platform**
 
-2. Public Search & Directory Page
-   - Search bar + filters by: Category, Location/Region, and Verified status.
-   - Grid/list view of NGO cards showing name, category, region, and a 
-     "View Profile" button.
+The application is designed for a district-level government initiative to connect NGOs, donors, volunteers, injured individuals requiring financial assistance, and government administrators through a single centralized platform.
 
-3. NGO Profile Page
-   - Full details, focus areas, service region (optionally shown on a map), 
-     contact info, and a live feed of their activities/projects.
+The project must contain two major modules:
 
-4. Activity & Impact Updates
-   - NGOs can post updates (title, description, date, images, impact 
-     numbers like "beneficiaries reached").
-   - Displayed chronologically on their profile.
+1. NGO Directory and Social Impact Networking.
+2. Emergency Medical Assistance and Direct Donations.
 
-5. Connect/Collaborate Feature
-   - Logged-in users (donors, volunteers, other NGOs) can click "Connect" 
-     to send a message/request to an NGO.
-   - Simple inbox for NGOs to view these requests.
+Use my existing MERN stack project structure and integrate the new functionality without breaking existing features.
 
-6. Admin Dashboard (District Authority Role)
-   - View all NGOs (pending/approved/rejected)
-   - Approve or reject new NGO registrations
-   - View analytics: total NGOs, NGOs per category, NGOs per region
-   - Export data as CSV
+Before writing code, inspect the existing project, identify its current implementation, and reuse existing components, authentication, database connections, API services, and styling wherever possible.
 
-USER ROLES:
-- Public/Guest (search & view only)
-- NGO (register, manage profile, post updates, receive connect requests)
-- Admin (approve NGOs, view analytics)
+Do not unnecessarily recreate working features.
 
-TECH STACK:
-- Frontend: React + Tailwind CSS
-- Backend: Node.js + Express (REST API)
-- Database: MongoDB (Mongoose schema) 
-- Auth: JWT-based login for NGO and Admin roles
-- Optional: Google Maps API to display NGO service regions
+## 2. TECHNOLOGY STACK
 
-DELIVERABLES:
-1. Database schema (NGOs, Users, Activities, ConnectRequests collections)
-2. REST API endpoints (CRUD for NGOs, Activities, Auth, Admin approval)
-3. React frontend with pages: Home/Search, NGO Profile, NGO Dashboard, 
-   Admin Dashboard, Login/Register
-4. Clean, responsive UI with a professional government-portal look 
-   (blue/white theme, cards, clear typography)
+### Frontend
+- React.js
+- Vite
+- Tailwind CSS
+- React Router DOM
+- Axios
+- Context API for authentication
+- Lucide React for icons
+- Responsive layouts for desktop, tablet, and mobile.
 
-Start by generating the database schema and API routes, then build the 
-frontend pages one by one.
-api keys :
-MONGODB_URI=mongodb+srv://bkkk727_db_user:7CEmizjTn0ww871M@cluster0.3yxtcic.mongodb.net/ngo_directory?appName=Cluster0
-JWT_SECRET=
-PORT=5000
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyBfUUn5v0jcj9q5nC3tHBpR0WOJm8hThR8
+### Backend
+- Node.js
+- Express.js
+- REST APIs
+- MongoDB
+- Mongoose
+- JWT authentication
+- bcryptjs for password hashing
+- Role-based access control
+- Multer for file uploads
+- Joi or express-validator for input validation.
+
+### Additional integrations
+- Razorpay for online donations.
+- Cloudinary for storing medical documents and images, with private storage for sensitive medical files.
+- Google Maps API as an optional service-region visualization feature.
+- Recharts for dashboard analytics.
+
+Use environment variables for all API keys, database credentials, and secrets.
+
+## 3. USER ROLES
+
+Implement the following roles:
+
+### A. Public / Guest
+- Browse approved NGOs.
+- Search and filter NGOs.
+- View public NGO profiles.
+- Browse approved emergency assistance profiles.
+- View verified fundraising campaigns.
+- View campaign progress and public impact updates.
+- Register or log in to access donation and collaboration features.
+
+### B. NGO
+- Register an NGO account.
+- Create and manage an NGO profile.
+- Submit registration details for administrator verification.
+- Publish activities and impact updates.
+- Receive and respond to collaboration requests.
+- View NGO analytics.
+
+### C. Donor
+- Register and log in.
+- Browse verified NGOs and emergency assistance campaigns.
+- Donate to an NGO or an approved medical assistance profile.
+- View personal donation history.
+- Download available donation receipts.
+- Track campaign progress.
+- Submit collaboration or volunteering requests.
+- View the status of donations and payment transactions.
+
+### D. Volunteer
+- Register and manage a profile.
+- Discover NGOs requiring volunteers.
+- Send collaboration requests.
+- View relevant activities and approved assistance campaigns.
+
+### E. Patient / Authorized Representative
+- Create an emergency assistance profile.
+- Submit medical assistance requests.
+- Upload supporting documents.
+- Provide hospital and treatment information.
+- Track verification and campaign status.
+- Post treatment progress updates after approval.
+- View donations received.
+- Request corrections or campaign closure.
+
+An authorized representative must confirm their authority to act for the patient. Include appropriate consent and privacy safeguards.
+
+### F. Admin / District Authority
+- Review NGO registrations.
+- Approve or reject NGOs.
+- Review emergency assistance applications.
+- Verify medical documents and supporting information.
+- Approve or reject fundraising campaigns.
+- Suspend suspicious profiles.
+- View platform analytics.
+- Manage users, NGOs, campaigns, and reported content.
+- Export relevant records to CSV.
+- Review donation transaction records and audit logs.
+
+Never allow public registration to create an administrator account. Admin accounts must be provisioned securely.
+
+## 4. NGO DIRECTORY MODULE
+
+### NGO registration
+Collect:
+- NGO name.
+- Registration number.
+- Registration authority and date, where applicable.
+- Focus areas.
+- Service regions and villages.
+- District and state.
+- Contact details.
+- Website and social media links.
+- Logo or organization image.
+- Description.
+- Supporting registration documents.
+
+Set the initial status to Pending.
+
+### NGO directory
+Create a searchable directory with:
+- Search by NGO name.
+- Filter by focus area.
+- Filter by district, region, or village.
+- Filter by verification status.
+- Grid and list views.
+- Pagination.
+- Verified badges.
+- NGO profile links.
+
+Only approved NGOs should appear in the public directory.
+
+### NGO profile
+Display:
+- Organization details.
+- Registration and verification status.
+- Focus areas.
+- Service locations.
+- Contact details.
+- Activities and projects.
+- Beneficiaries reached.
+- Photos and impact updates.
+- Connect button.
+
+### NGO activity management
+Allow authorized NGO users to:
+- Create activities.
+- Edit their own activities.
+- Delete their own activities.
+- Upload activity images.
+- Record activity dates and locations.
+- Record beneficiary counts.
+- Publish impact updates.
+
+Validate all inputs and prevent users from modifying activities belonging to other organizations.
+
+## 5. EMERGENCY MEDICAL ASSISTANCE MODULE
+
+Create a dedicated section called:
+
+**Emergency Medical Assistance**
+
+Add a navigation link and a prominent button on the homepage:
+
+"Get Medical Assistance"
+
+### A. Create an assistance profile
+
+Allow an injured or seriously ill person, or their authorized representative, to submit a medical assistance request.
+
+Collect the following information:
+
+PATIENT INFORMATION:
+- Full name.
+- Age or date of birth, as appropriate.
+- Profile photograph, optional.
+- District.
+- Village or city.
+- Emergency contact details.
+- Patient or representative relationship.
+- Representative authorization confirmation.
+
+MEDICAL INFORMATION:
+- Medical condition or injury.
+- Brief explanation of the incident or treatment requirement.
+- Hospital name.
+- Hospital location.
+- Treating department or contact, where appropriate.
+- Estimated treatment cost.
+- Amount of financial assistance required.
+- Amount already received from other sources.
+- Amount requested from the public.
+- Treatment urgency.
+- Required assistance deadline.
+
+SUPPORTING DOCUMENTS:
+- Medical reports.
+- Hospital treatment estimate.
+- Relevant prescriptions.
+- Other documents required for verification.
+
+Do not make medical documents publicly accessible. Restrict access to authorized administrators and the patient or representative. Use private storage and secure access controls.
+
+### B. Verification workflow
+
+Use the following campaign statuses:
+
+- Draft
+- Pending Verification
+- Under Review
+- Approved
+- Rejected
+- Active
+- Paused
+- Goal Reached
+- Completed
+- Closed
+
+Implement status transitions carefully.
+
+The administrator must review the submitted information and supporting documents before approving a campaign.
+
+Only approved campaigns may become publicly visible or accept donations.
+
+Display a clear verification badge on approved profiles.
+
+Record the reviewer, review timestamp, decision, and reason for rejection.
+
+Do not present uploaded documents or user-provided statements as independently verified until the relevant checks are completed.
+
+### C. Public assistance directory
+
+Create a dedicated page displaying approved medical assistance profiles.
+
+Each campaign card should include:
+- Patient name or privacy-preserving display name.
+- Profile image, if consented.
+- Medical assistance category.
+- District and location.
+- Short description.
+- Hospital name, where consented.
+- Amount required.
+- Amount raised.
+- Remaining amount.
+- Progress bar.
+- Verification badge.
+- Urgency indicator.
+- View Details button.
+- Donate Now button.
+
+Provide search and filters by:
+- Location.
+- Medical assistance category.
+- Urgency.
+- Funding progress.
+- Active or completed status.
+
+Provide sorting by newest, most urgent, and closest to reaching the funding target.
+
+Avoid publicly exposing unnecessary personal, medical, identity, or contact information.
+
+### D. Medical assistance profile page
+
+Display:
+- Patient introduction.
+- Assistance requirement.
+- Approved medical summary.
+- Hospital and treatment information.
+- Funding target.
+- Amount raised.
+- Number of confirmed contributions.
+- Funding progress.
+- Treatment deadline, if applicable.
+- Verification status.
+- Public progress updates.
+- Donation history summaries without exposing donors' private information.
+- Donate Now button.
+- Share Campaign button.
+- Report Campaign button.
+
+Allow patients or authorized representatives to post progress updates after approval.
+
+Each update should include a title, description, date, and optional image.
+
+Updates must not expose sensitive medical information without appropriate consent.
+
+### E. Donation system
+
+Integrate Razorpay to support online donations.
+
+The donation form should include:
+- Donation amount.
+- Optional donor name.
+- Optional message.
+- Anonymous donation option.
+- Payment initiation.
+- Payment confirmation.
+- Receipt generation.
+
+Support donations to:
+1. An NGO.
+2. An approved emergency medical assistance campaign.
+
+Implement the complete payment lifecycle:
+
+1. The frontend requests creation of a donation order.
+2. The backend validates the amount and donation target.
+3. The backend creates the payment order using Razorpay credentials.
+4. The frontend opens the payment checkout.
+5. The backend verifies the payment signature.
+6. A verified webhook updates the payment status.
+7. The donation is marked successful only after trusted server-side verification.
+8. The campaign's confirmed raised amount is calculated from successful donations.
+9. The donor can view the transaction and download the available receipt.
+
+Use server-side payment verification and idempotent webhook handling.
+
+Never trust an amount, payment status, or campaign total supplied directly by the frontend.
+
+Store payment IDs, order IDs, transaction status, timestamps, and reconciliation information.
+
+Do not store card numbers, CVVs, or other sensitive payment credentials.
+
+Support the following donation transaction statuses:
+- Created
+- Pending
+- Successful
+- Failed
+- Refunded
+- Partially Refunded
+
+Ensure repeated webhooks cannot count the same donation twice.
+
+### F. Donation transparency
+
+For every campaign, calculate:
+
+Confirmed Amount Raised = Sum of eligible, successfully verified donations, adjusted for refunds.
+
+Remaining Amount = Maximum of zero and Funding Target minus Confirmed Amount Raised.
+
+Funding Progress = Confirmed Amount Raised divided by Funding Target, multiplied by 100, capped at 100%.
+
+Calculate these values on the backend.
+
+Display:
+- Target amount.
+- Confirmed amount raised.
+- Number of successful donations.
+- Remaining amount.
+- Recent donation activity, respecting donor privacy.
+
+Do not display pending or failed payments as successful donations.
+
+Allow campaign owners to request closure when the target is reached or treatment is completed.
+
+Handle overfunding and refunds according to a documented campaign policy.
+
+### G. Direct donation to a patient
+
+Support a clearly defined direct-donation model.
+
+Initially, use the payment gateway to collect a donation assigned to a particular approved patient campaign. Store the association between the payment, campaign, and intended beneficiary.
+
+If direct bank or UPI transfers to a patient are supported, provide an optional, explicitly consented payout destination and a secure verification workflow.
+
+Never imply that the platform transferred money to a patient unless an actual transfer was completed and verified.
+
+For direct transfers, distinguish:
+- Donation pledged.
+- External transfer reported.
+- Transfer independently verified.
+- Transfer not verified.
+
+For gateway-based fundraising, document who receives and controls the collected funds, how payouts work, and how refunds or unused funds are handled.
+
+Do not promise tax benefits or issue tax-deductible receipts unless the relevant legal eligibility requirements have been established.
+
+### H. Fraud prevention and reporting
+
+Implement:
+- Campaign reporting.
+- Duplicate campaign detection where practical.
+- Document verification.
+- Rate limiting.
+- File type and file size restrictions.
+- Private medical document storage.
+- Access logging for sensitive files.
+- Admin review history.
+- Secure authorization for campaign edits.
+- Audit logs for approval decisions and financial actions.
+
+Never allow a user to approve their own campaign or edit another user's campaign.
+
+## 6. CONNECT AND COLLABORATION MODULE
+
+Allow logged-in users to send collaboration requests to NGOs.
+
+A request should contain:
+- Sender.
+- Target NGO.
+- Request type.
+- Subject.
+- Message.
+- Status.
+- Created date.
+
+Request types:
+- Donation inquiry.
+- Volunteer opportunity.
+- Partnership.
+- General inquiry.
+
+Provide an inbox for NGO users.
+
+Allow recipients to accept, reject, or respond to requests.
+
+Restrict requests and messages to authorized participants.
+
+## 7. ADMIN DASHBOARD
+
+Create a professional district authority dashboard.
+
+### NGO management
+- Total NGOs.
+- Pending registrations.
+- Approved NGOs.
+- Rejected NGOs.
+- NGO distribution by focus area.
+- NGO distribution by region.
+
+### Medical assistance management
+- Total applications.
+- Pending verification.
+- Approved campaigns.
+- Rejected applications.
+- Active campaigns.
+- Completed campaigns.
+- Reported campaigns.
+
+### Donation analytics
+- Total confirmed donations.
+- Donations by campaign.
+- Donations by NGO.
+- Successful and failed payments.
+- Refund totals.
+- Pending reconciliation.
+- Recent transactions.
+
+Never count failed, pending, or unverified external transfers as confirmed donations.
+
+### Admin actions
+- Approve or reject NGOs.
+- Approve or reject medical assistance campaigns.
+- Request additional documents.
+- Pause suspicious campaigns.
+- Review complaints.
+- View audit history.
+- Export authorized records to CSV.
+
+Do not expose private medical records in ordinary analytics exports.
+
+## 8. DATABASE SCHEMAS
+
+Create Mongoose models for:
+
+### User
+- name
+- email
+- passwordHash
+- role
+- phone
+- accountStatus
+- createdAt
+- updatedAt
+
+### NGO
+- owner
+- name
+- registrationNumber
+- registrationAuthority
+- focusAreas
+- serviceRegions
+- district
+- state
+- contactInfo
+- website
+- socialLinks
+- logo
+- description
+- verificationStatus
+- reviewedBy
+- reviewedAt
+- rejectionReason
+- createdAt
+- updatedAt
+
+### Activity
+- ngo
+- title
+- description
+- activityDate
+- location
+- images
+- beneficiariesReached
+- status
+- createdAt
+- updatedAt
+
+### ConnectRequest
+- sender
+- targetNGO
+- requestType
+- subject
+- message
+- status
+- response
+- createdAt
+- updatedAt
+
+### MedicalAssistance
+- createdBy
+- representative
+- patientDisplayName
+- privatePatientDetails
+- conditionCategory
+- medicalSummary
+- hospitalDetails
+- district
+- serviceLocation
+- fundingTarget
+- fundingCurrency
+- urgency
+- treatmentDeadline
+- supportingDocuments
+- verificationStatus
+- campaignStatus
+- reviewedBy
+- reviewedAt
+- rejectionReason
+- publicConsent
+- createdAt
+- updatedAt
+
+Use a separate secure document-access model or service where appropriate.
+
+### MedicalUpdate
+- campaign
+- author
+- title
+- description
+- images
+- publishedAt
+- visibility
+- createdAt
+- updatedAt
+
+### Donation
+- donor
+- targetType
+- targetNGO
+- targetCampaign
+- amount
+- currency
+- paymentProvider
+- providerOrderId
+- providerPaymentId
+- providerSignatureStatus
+- transactionStatus
+- isAnonymous
+- donorMessage
+- receiptReference
+- refundAmount
+- createdAt
+- updatedAt
+
+### PaymentWebhookEvent
+- provider
+- eventId
+- eventType
+- processingStatus
+- processedAt
+- createdAt
+
+Enforce unique indexes for provider event IDs and other relevant payment identifiers.
+
+### AuditLog
+- actor
+- action
+- resourceType
+- resourceId
+- safeMetadata
+- createdAt
+
+Record sensitive actions without unnecessarily copying private medical or payment data into logs.
+
+Use Mongoose references, indexes, schema validation, timestamps, and suitable pagination.
+
+Use separate public response serializers so private fields are never returned by ordinary API responses.
+
+## 9. REST API ENDPOINTS
+
+### Authentication
+POST /api/auth/register
+POST /api/auth/login
+GET /api/auth/me
+
+### NGOs
+GET /api/ngos
+GET /api/ngos/:id
+POST /api/ngos
+PUT /api/ngos/:id
+DELETE /api/ngos/:id
+GET /api/ngos/:id/activities
+
+### Activities
+POST /api/ngos/:id/activities
+PUT /api/activities/:id
+DELETE /api/activities/:id
+
+### Connect requests
+POST /api/connect
+GET /api/connect/inbox
+GET /api/connect/:id
+PATCH /api/connect/:id/status
+
+### Medical assistance
+POST /api/medical-assistance
+GET /api/medical-assistance
+GET /api/medical-assistance/:id
+PUT /api/medical-assistance/:id
+PATCH /api/medical-assistance/:id/submit
+PATCH /api/medical-assistance/:id/close
+POST /api/medical-assistance/:id/updates
+GET /api/medical-assistance/:id/updates
+POST /api/medical-assistance/:id/report
+
+Create a separate authenticated endpoint for private document access. Never expose unrestricted medical-document URLs.
+
+### Donations
+POST /api/donations/order
+POST /api/donations/verify
+POST /api/donations/webhook
+GET /api/donations/my-donations
+GET /api/donations/:id
+GET /api/donations/:id/receipt
+GET /api/medical-assistance/:id/donations
+
+### Admin
+GET /api/admin/ngos
+PATCH /api/admin/ngos/:id/approve
+PATCH /api/admin/ngos/:id/reject
+
+GET /api/admin/medical-assistance
+PATCH /api/admin/medical-assistance/:id/approve
+PATCH /api/admin/medical-assistance/:id/reject
+PATCH /api/admin/medical-assistance/:id/request-documents
+
+GET /api/admin/analytics
+GET /api/admin/donations
+GET /api/admin/audit-logs
+GET /api/admin/export/ngos
+GET /api/admin/export/medical-assistance
+GET /api/admin/export/donations
+
+Apply authentication, role authorization, request validation, and resource ownership checks to every protected endpoint.
+
+Public directory endpoints must return only approved, publicly shareable information.
+
+## 10. FRONTEND PAGES
+
+Build these pages using React Router.
+
+### Public pages
+1. Home.jsx
+2. Home/Search NGO Directory.
+3. NGOProfile.jsx
+4. EmergencyAssistance.jsx
+5. MedicalAssistanceProfile.jsx
+6. Login.jsx
+7. Register.jsx
+8. NotFound.jsx
+
+### Authenticated pages
+9. DonorDashboard.jsx
+10. PatientDashboard.jsx
+11. NGODashboard.jsx
+12. AdminDashboard.jsx
+13. CreateMedicalAssistance.jsx
+14. DonationHistory.jsx
+
+### Reusable components
+- Navbar.jsx
+- Footer.jsx
+- NGOCard.jsx
+- SearchFilters.jsx
+- ActivityFeed.jsx
+- ConnectButton.jsx
+- MedicalAssistanceCard.jsx
+- CampaignProgress.jsx
+- DonationForm.jsx
+- DonationHistoryTable.jsx
+- VerificationBadge.jsx
+- DocumentUpload.jsx
+- ProtectedRoute.jsx
+- LoadingSpinner.jsx
+- EmptyState.jsx
+- ErrorMessage.jsx
+- Pagination.jsx
+- ConfirmationModal.jsx
+
+### Authentication context
+Create AuthContext.jsx to manage:
+- User.
+- JWT access token.
+- Role.
+- Login.
+- Logout.
+- Session restoration.
+
+Protect routes based on roles.
+
+Do not store sensitive data in browser storage. Use a secure authentication strategy, preferably short-lived access tokens and appropriately configured HttpOnly cookies for persistent sessions.
+
+## 11. UI / UX DESIGN
+
+Create a professional government-portal design.
+
+Theme:
+- Primary blue.
+- White backgrounds.
+- Light gray surfaces.
+- Clear typography.
+- Accessible contrast.
+- Consistent spacing.
+- Rounded cards.
+- Subtle shadows.
+- Responsive layouts.
+
+Homepage sections:
+1. Government initiative header.
+2. Hero section explaining the platform.
+3. Search NGOs.
+4. Emergency Medical Assistance banner.
+5. Featured verified NGOs.
+6. Approved medical assistance campaigns.
+7. Platform impact statistics.
+8. How it works.
+9. Footer with privacy, contact, and reporting information.
+
+Use distinct visual treatments for:
+- Verified NGOs.
+- Verified medical campaigns.
+- Pending applications in private dashboards.
+- Successful and unsuccessful transactions.
+
+The UI must be accessible and usable on mobile phones.
+
+Avoid fake government logos, fabricated official endorsements, and misleading government approval claims.
+
+## 12. SECURITY REQUIREMENTS
+
+Implement:
+- Password hashing.
+- JWT verification.
+- Role-based authorization.
+- Resource ownership checks.
+- Server-side input validation.
+- Rate limiting.
+- Secure CORS configuration.
+- Helmet security headers.
+- Secure file upload validation.
+- Protection against mass assignment.
+- Safe MongoDB query construction.
+- Private storage for medical records.
+- Payment signature verification.
+- Webhook signature verification.
+- Idempotent payment processing.
+- Audit logs.
+- Environment-based secrets.
+- Appropriate data retention and deletion policies.
+
+Do not store plaintext passwords.
+
+Do not trust frontend role values or verification status.
+
+Do not allow unauthenticated users to upload unlimited files or send unlimited requests.
+
+Never expose private medical details, private contact details, authentication secrets, or payment credentials in API responses or logs.
+
+## 13. PROJECT FOLDER STRUCTURE
+
+Maintain a modular MERN architecture.
+
+Backend:
+- config
+- models
+- routes
+- controllers
+- middleware
+- services
+- validators
+- utils
+- uploads or secure cloud-storage integration
+- server.js
+
+Frontend:
+- src/components
+- src/pages
+- src/context
+- src/services
+- src/hooks
+- src/utils
+- src/assets
+- App.jsx
+- main.jsx
+- index.css
+
+Add separate models, controllers, services, and routes for medical assistance and donations.
+
+## 14. DEVELOPMENT ORDER
+
+Build the application in the following phases.
+
+PHASE 1:
+Inspect the existing project and document its current implementation.
+
+PHASE 2:
+Implement and validate database schemas.
+
+PHASE 3:
+Implement authentication and role-based middleware.
+
+PHASE 4:
+Complete NGO registration, directory, profiles, activities, and collaboration requests.
+
+PHASE 5:
+Implement medical assistance registration, private document uploads, and admin verification.
+
+PHASE 6:
+Implement campaign pages, funding progress, donation orders, payment verification, webhooks, and receipts.
+
+PHASE 7:
+Build the patient, donor, NGO, and administrator dashboards.
+
+PHASE 8:
+Integrate analytics, reporting, and CSV exports.
+
+PHASE 9:
+Implement security tests, payment tests, responsive design, and error handling.
+
+PHASE 10:
+Write the README, environment setup instructions, database setup, API documentation, and deployment guide.
+
+After each phase, explain the files created or modified, run available tests, and fix errors before continuing.
+
+## 15. FINAL EXPECTATION
+
+Deliver a functional full-stack application rather than a static UI prototype.
+
+All buttons, forms, filters, dashboards, and API calls must work.
+
+Use real MongoDB persistence, secure authentication, validated backend APIs, and sandbox payment integration during development.
+
+Include realistic demo data clearly marked as demo data. Never fabricate verified NGOs, real patients, completed donations, or official government endorsements.
+
+If a third-party service requires credentials, provide an example environment file and clear setup instructions.
+
+Prioritize data privacy, patient dignity, donor trust, transparent fundraising, accessibility, and secure financial transactions.

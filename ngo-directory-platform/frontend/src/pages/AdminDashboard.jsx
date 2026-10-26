@@ -11,11 +11,23 @@ import {
   adminGetActivities, updateActivityStatus,
   adminGetEvents, updateEventStatus,
 } from '../services/api';
+import {
+  adminGetMedicalCampaigns,
+  adminApproveCampaign,
+  adminRejectCampaign,
+  adminRequestDocuments,
+  adminPauseCampaign,
+  adminResumeCampaign,
+  adminGetMedicalAnalytics,
+  getPrivateDocumentUrl,
+} from '../services/medicalAssistanceService';
+import VerificationBadge from '../components/medical/VerificationBadge';
+import CampaignProgress from '../components/medical/CampaignProgress';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#6b7280'];
 
 const StatCard = ({ icon, label, value, color, subtext }) => (
-  <div className="card p-5 flex items-center gap-4">
+  <div className="card p-5 flex items-center gap-4 bg-white border border-gray-100 shadow-xs">
     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${color}`}>
       {icon}
     </div>
@@ -28,13 +40,28 @@ const StatCard = ({ icon, label, value, color, subtext }) => (
 );
 
 const AdminDashboard = () => {
-  const [tab, setTab] = useState('pending');
+  const [tab, setTab] = useState('medical');
   const [ngos, setNgos] = useState([]);
   const [activities, setActivities] = useState([]);
   const [events, setEvents] = useState([]);
   const [donations, setDonations] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+
+  // Medical Assistance Admin State
+  const [medicalCampaigns, setMedicalCampaigns] = useState([]);
+  const [medicalAnalytics, setMedicalAnalytics] = useState(null);
+  const [medicalFilter, setMedicalFilter] = useState('Pending');
+  const [medicalSearch, setMedicalSearch] = useState('');
+  const [inspectModal, setInspectModal] = useState(null);
+  const [medRejectModal, setMedRejectModal] = useState(null);
+  const [medRejectReason, setMedRejectReason] = useState('');
+  const [requestDocsModal, setRequestDocsModal] = useState(null);
+  const [requestDocsText, setRequestDocsText] = useState('');
+  const [pauseModal, setPauseModal] = useState(null);
+  const [pauseReasonText, setPauseReasonText] = useState('');
+  const [reportsModal, setReportsModal] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
   const [actionLoading, setActionLoading] = useState({});
@@ -49,16 +76,6 @@ const AdminDashboard = () => {
       setNgos(res.data.data || []);
     } catch {
       setNgos([]);
-    }
-  };
-
-  const handleActivityStatus = async (activityId, status) => {
-    try {
-      await updateActivityStatus(activityId, { status });
-      toast.success(`Activity ${status === 'approved' ? 'approved' : 'rejected'} successfully`);
-      await Promise.all([loadActivities(), loadAnalytics()]);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update activity');
     }
   };
 
@@ -105,15 +122,37 @@ const AdminDashboard = () => {
     } catch { /* ignore */ }
   };
 
+  const loadMedicalData = async () => {
+    try {
+      const [campaignsRes, statsRes] = await Promise.all([
+        adminGetMedicalCampaigns(),
+        adminGetMedicalAnalytics(),
+      ]);
+      setMedicalCampaigns(campaignsRes.data.data || []);
+      setMedicalAnalytics(statsRes.data.data || null);
+    } catch {
+      setMedicalCampaigns([]);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([loadNGOs(), loadAnalytics(), loadActivities(), loadEvents(), loadDonations(), loadContacts()]);
+      await Promise.all([
+        loadNGOs(),
+        loadAnalytics(),
+        loadActivities(),
+        loadEvents(),
+        loadDonations(),
+        loadContacts(),
+        loadMedicalData(),
+      ]);
       setLoading(false);
     };
     init();
   }, []);
 
+  // ─── NGO Handlers ──────────────────────────────────────────────────────────
   const handleStatusChange = async (ngoId, status, reason = '') => {
     setActionLoading((prev) => ({ ...prev, [ngoId]: true }));
     try {
@@ -127,6 +166,16 @@ const AdminDashboard = () => {
       toast.error(err.response?.data?.message || 'Action failed');
     } finally {
       setActionLoading((prev) => ({ ...prev, [ngoId]: false }));
+    }
+  };
+
+  const handleActivityStatus = async (activityId, status) => {
+    try {
+      await updateActivityStatus(activityId, { status });
+      toast.success(`Activity ${status === 'approved' ? 'approved' : 'rejected'} successfully`);
+      await Promise.all([loadActivities(), loadAnalytics()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update activity');
     }
   };
 
@@ -165,9 +214,87 @@ const AdminDashboard = () => {
     }
   };
 
+  // ─── Medical Assistance Admin Handlers ─────────────────────────────────────
+  const handleApproveMedical = async (campaignId) => {
+    setActionLoading((p) => ({ ...p, [campaignId]: true }));
+    try {
+      await adminApproveCampaign(campaignId);
+      toast.success('Medical Assistance campaign officially Approved & Verified! Now public.');
+      await loadMedicalData();
+      setInspectModal(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Approval failed');
+    } finally {
+      setActionLoading((p) => ({ ...p, [campaignId]: false }));
+    }
+  };
+
+  const handleRejectMedical = async (e) => {
+    e.preventDefault();
+    if (!medRejectReason.trim()) {
+      toast.error('Please specify the official rejection reason');
+      return;
+    }
+    try {
+      await adminRejectCampaign(medRejectModal._id, { rejectionReason: medRejectReason.trim() });
+      toast.success('Application marked as Rejected with recorded reason.');
+      setMedRejectModal(null);
+      setInspectModal(null);
+      setMedRejectReason('');
+      await loadMedicalData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Rejection failed');
+    }
+  };
+
+  const handleRequestDocs = async (e) => {
+    e.preventDefault();
+    if (!requestDocsText.trim()) {
+      toast.error('Please enter the documents requested');
+      return;
+    }
+    try {
+      await adminRequestDocuments(requestDocsModal._id, { documentsRequested: requestDocsText.trim() });
+      toast.success('Additional documents requested from applicant. Status changed to Under Review.');
+      setRequestDocsModal(null);
+      setInspectModal(null);
+      setRequestDocsText('');
+      await loadMedicalData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Request failed');
+    }
+  };
+
+  const handlePauseMedical = async (e) => {
+    e.preventDefault();
+    try {
+      await adminPauseCampaign(pauseModal._id, { pauseReason: pauseReasonText.trim() });
+      toast.success('Campaign paused and hidden from public donation directory.');
+      setPauseModal(null);
+      setInspectModal(null);
+      setPauseReasonText('');
+      await loadMedicalData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Pause failed');
+    }
+  };
+
+  const handleResumeMedical = async (campaignId) => {
+    try {
+      await adminResumeCampaign(campaignId);
+      toast.success('Campaign resumed and is now active in public directory.');
+      setInspectModal(null);
+      await loadMedicalData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Resume failed');
+    }
+  };
+
   const switchTab = async (key) => {
     setTab(key);
-    if (key === 'ngos') {
+    if (key === 'medical') {
+      await loadMedicalData();
+    } else if (key === 'ngos') {
       await loadNGOs(statusFilter);
     } else if (key === 'pending') {
       await loadNGOs('pending');
@@ -187,6 +314,29 @@ const AdminDashboard = () => {
     await loadNGOs(s);
   };
 
+  // Filtered Medical Campaigns for Table
+  const filteredMedical = medicalCampaigns.filter((m) => {
+    if (medicalFilter !== 'all') {
+      if (medicalFilter === 'reported') {
+        if (!m.reports || m.reports.length === 0) return false;
+      } else if (medicalFilter === 'Paused') {
+        if (m.campaignStatus !== 'Paused') return false;
+      } else if (m.verificationStatus !== medicalFilter) {
+        return false;
+      }
+    }
+
+    if (!medicalSearch) return true;
+    const term = medicalSearch.toLowerCase();
+    return (
+      m.patientDisplayName?.toLowerCase().includes(term) ||
+      m.privatePatientDetails?.fullName?.toLowerCase().includes(term) ||
+      m.district?.toLowerCase().includes(term) ||
+      m.conditionCategory?.toLowerCase().includes(term) ||
+      m.hospitalDetails?.hospitalName?.toLowerCase().includes(term)
+    );
+  });
+
   const filteredNGOs = ngos.filter((n) => {
     if (!tableSearch) return true;
     const term = tableSearch.toLowerCase();
@@ -200,7 +350,7 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="spinner w-12 h-12" />
       </div>
     );
@@ -208,7 +358,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Header */}
+      {/* Top Header */}
       <div className="bg-navy text-white py-8">
         <div className="container-main flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -216,7 +366,9 @@ const AdminDashboard = () => {
               🏛️ District Administration Portal
             </div>
             <h1 className="text-2xl md:text-3xl font-bold">Social Welfare Admin Panel</h1>
-            <p className="text-blue-200 text-xs mt-1">Verification Workflow, Donations Ledger & Sector Analytics</p>
+            <p className="text-blue-200 text-xs mt-1">
+              Medical Assistance Verifications, NGO Directory Audit & Direct Donations Ledger
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -226,30 +378,57 @@ const AdminDashboard = () => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Export CSV Dataset
+              Export Authorized Records CSV
             </button>
           </div>
         </div>
       </div>
 
-      <div className="container-main py-8">
-        {/* Stats Grid */}
-        {analytics && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <StatCard icon="🏛️" label="Total Registered" value={analytics.totalNGOs} color="bg-primary-50 text-primary-700" subtext="All applications" />
-            <StatCard icon="✅" label="Approved & Verified" value={analytics.approvedNGOs} color="bg-emerald/10 text-emerald-dark" subtext="Publicly searchable" />
-            <StatCard icon="⏳" label="Pending Audits" value={analytics.pendingNGOs} color="bg-amber/10 text-amber-dark" subtext="Requires nodal action" />
-            <StatCard icon="🤝" label="Total Donations" value={donations.length} color="bg-purple-50 text-purple-700" subtext="Contributions logged" />
-          </div>
-        )}
+      <div className="container-main py-8 space-y-6">
+        {/* Top Operational Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            icon="🩺"
+            label="Medical Requests"
+            value={medicalAnalytics?.totalApplications || medicalCampaigns.length}
+            color="bg-red-50 text-red-600"
+            subtext={`${medicalAnalytics?.pendingApplications || 0} pending audit`}
+          />
+          <StatCard
+            icon="✅"
+            label="Approved Medical Aid"
+            value={medicalAnalytics?.approvedCampaigns || 0}
+            color="bg-emerald-50 text-emerald-700"
+            subtext="Accepting donations"
+          />
+          <StatCard
+            icon="💳"
+            label="Confirmed Medical Aid"
+            value={`₹${(medicalAnalytics?.totalConfirmedDonations || 0).toLocaleString('en-IN')}`}
+            color="bg-purple-50 text-purple-700"
+            subtext={`${medicalAnalytics?.successfulTransactionCount || 0} verified transactions`}
+          />
+          <StatCard
+            icon="🏛️"
+            label="Verified NGOs"
+            value={analytics?.approvedNGOs || 0}
+            color="bg-primary-50 text-primary-700"
+            subtext={`${analytics?.pendingNGOs || 0} pending audits`}
+          />
+        </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-1.5 mb-6 bg-gray-100 rounded-xl p-1 flex-wrap">
+        <div className="flex gap-1.5 bg-gray-100 rounded-xl p-1 flex-wrap text-xs md:text-sm">
           {[
-            { key: 'pending', label: '⏳ Pending Applications', count: analytics?.pendingNGOs },
-            { key: 'activities', label: `📣 Pending Activities (${activities.length})`, count: null },
-            { key: 'events', label: `📅 Pending Events (${events.length})`, count: null },
-            { key: 'ngos', label: '📋 All NGO Records', count: null },
+            {
+              key: 'medical',
+              label: '🩺 Medical Assistance Queue',
+              count: (medicalAnalytics?.pendingApplications || 0) + (medicalAnalytics?.underReviewApplications || 0),
+            },
+            { key: 'pending', label: '⏳ Pending NGO Audits', count: analytics?.pendingNGOs },
+            { key: 'activities', label: `📣 Activities (${activities.length})`, count: null },
+            { key: 'events', label: `📅 Events (${events.length})`, count: null },
+            { key: 'ngos', label: '📋 NGO Records', count: null },
             { key: 'donations', label: `🤝 Donations Ledger (${donations.length})`, count: null },
             { key: 'contacts', label: `✉️ Inquiries (${contacts.filter((c) => c.status === 'new').length} new)`, count: null },
             { key: 'analytics', label: '📊 Sector Analytics', count: null },
@@ -258,12 +437,12 @@ const AdminDashboard = () => {
               key={t.key}
               id={`admin-tab-${t.key}`}
               onClick={() => switchTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 font-semibold rounded-lg transition-all ${
                 tab === t.key ? 'bg-white text-primary-700 shadow-xs' : 'text-gray-500 hover:text-gray-700'
               }`}>
               {t.label}
               {t.count > 0 && (
-                <span className="bg-amber text-white rounded-full text-[10px] px-1.5 py-0.5 font-bold">
+                <span className="bg-red-500 text-white rounded-full text-[10px] px-1.5 py-0.5 font-bold">
                   {t.count}
                 </span>
               )}
@@ -271,14 +450,182 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        {/* Tab 1: Pending Approvals */}
+        {/* ─── TAB: MEDICAL ASSISTANCE MANAGEMENT ────────────────────────── */}
+        {tab === 'medical' && (
+          <div className="animate-fade-in space-y-5">
+            {/* Medical Metrics Cards */}
+            {medicalAnalytics && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-center">
+                <div className="p-3 bg-white rounded-xl border border-gray-100">
+                  <div className="text-xl font-bold text-gray-900">{medicalAnalytics.totalApplications}</div>
+                  <div className="text-[10px] text-gray-500">Total Cases</div>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <div className="text-xl font-bold text-amber-900">{medicalAnalytics.pendingApplications}</div>
+                  <div className="text-[10px] text-amber-700 font-semibold">Pending</div>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="text-xl font-bold text-blue-900">{medicalAnalytics.underReviewApplications}</div>
+                  <div className="text-[10px] text-blue-700 font-semibold">Under Review</div>
+                </div>
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <div className="text-xl font-bold text-emerald-900">{medicalAnalytics.approvedCampaigns}</div>
+                  <div className="text-[10px] text-emerald-700 font-semibold">Approved</div>
+                </div>
+                <div className="p-3 bg-red-50 rounded-xl border border-red-200">
+                  <div className="text-xl font-bold text-red-900">{medicalAnalytics.rejectedApplications}</div>
+                  <div className="text-[10px] text-red-700 font-semibold">Rejected</div>
+                </div>
+                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200">
+                  <div className="text-xl font-bold text-purple-900">{medicalAnalytics.completedCampaigns}</div>
+                  <div className="text-[10px] text-purple-700 font-semibold">Completed</div>
+                </div>
+                <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
+                  <div className="text-xl font-bold text-orange-900">{medicalAnalytics.reportedCampaigns}</div>
+                  <div className="text-[10px] text-orange-700 font-semibold">Reported 🚩</div>
+                </div>
+              </div>
+            )}
+
+            {/* Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-100">
+              <div className="flex gap-1.5 flex-wrap text-xs">
+                {['Pending', 'Under Review', 'Approved', 'Paused', 'Rejected', 'reported', 'all'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setMedicalFilter(st)}
+                    className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-colors ${
+                      medicalFilter === st
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}>
+                    {st === 'all' ? 'All Applications' : st}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="text"
+                placeholder="Search patient, hospital, district..."
+                value={medicalSearch}
+                onChange={(e) => setMedicalSearch(e.target.value)}
+                className="input py-1.5 px-3 text-xs w-full sm:w-64"
+              />
+            </div>
+
+            {/* Table of Medical Applications */}
+            {filteredMedical.length === 0 ? (
+              <div className="card p-12 text-center text-gray-400 bg-white border border-gray-100">
+                <div className="text-3xl mb-2">🩺</div>
+                <p className="text-xs md:text-sm font-medium">No medical assistance requests matching filter.</p>
+              </div>
+            ) : (
+              <div className="card overflow-hidden border border-gray-100 shadow-sm bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 font-semibold">
+                        <th className="text-left px-5 py-3">Patient & Diagnosis</th>
+                        <th className="text-left px-5 py-3">Category & Urgency</th>
+                        <th className="text-left px-5 py-3">Hospital & Location</th>
+                        <th className="text-left px-5 py-3">Funding Target & Raised</th>
+                        <th className="text-left px-5 py-3">Status</th>
+                        <th className="text-left px-5 py-3">Docs</th>
+                        <th className="text-right px-5 py-3">Verification Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredMedical.map((m) => (
+                        <tr key={m._id} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="px-5 py-3.5">
+                            <div className="font-bold text-gray-900">{m.patientDisplayName}</div>
+                            <div className="text-[11px] text-gray-400">
+                              Legal: {m.privatePatientDetails?.fullName || '—'} (Age: {m.privatePatientDetails?.age || '—'})
+                            </div>
+                            {m.reports?.length > 0 && (
+                              <span className="badge bg-red-100 text-red-800 text-[10px] font-bold mt-1">
+                                🚩 {m.reports.length} Reports
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-3.5">
+                            <span className="badge bg-blue-50 text-blue-700 text-[10px] block mb-1">
+                              {m.conditionCategory}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-red-600">
+                              {m.urgency?.replace('_', ' ')}
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-3.5">
+                            <div className="font-medium text-gray-800 truncate max-w-[160px]">
+                              {m.hospitalDetails?.hospitalName || '—'}
+                            </div>
+                            <div className="text-[11px] text-gray-400">📍 {m.district}</div>
+                          </td>
+
+                          <td className="px-5 py-3.5">
+                            <div className="font-bold text-primary-700">
+                              ₹{Number(m.fundingTarget).toLocaleString('en-IN')}
+                            </div>
+                            <div className="text-[10px] text-gray-500">
+                              Raised: ₹{(m.amountRaised || 0).toLocaleString('en-IN')} ({m.progressPercentage || 0}%)
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-3.5">
+                            <VerificationBadge status={m.verificationStatus} />
+                            {m.campaignStatus === 'Paused' && (
+                              <span className="badge bg-red-100 text-red-800 text-[10px] ml-1">Paused</span>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-3.5">
+                            <span className="badge bg-gray-100 text-gray-700 font-mono text-[10px]">
+                              {m.supportingDocuments?.length || 0} files
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setInspectModal(m)}
+                                className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-semibold">
+                                Inspect Audit 🔍
+                              </button>
+                              {m.verificationStatus !== 'Approved' && (
+                                <button
+                                  onClick={() => handleApproveMedical(m._id)}
+                                  className="btn-success btn-sm text-[11px] py-1 px-2.5">
+                                  Approve
+                                </button>
+                              )}
+                              {m.verificationStatus !== 'Rejected' && (
+                                <button
+                                  onClick={() => setMedRejectModal(m)}
+                                  className="btn-danger btn-sm text-[11px] py-1 px-2.5">
+                                  Reject
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── TAB: PENDING NGO APPLICATIONS ─────────────────────────────── */}
         {tab === 'pending' && (
           <div className="animate-fade-in space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900">
-                Pending Verification Queue ({ngos.filter((n) => n.status === 'pending').length})
-              </h2>
-            </div>
+            <h2 className="text-base font-bold text-gray-900">
+              Pending NGO Verification Queue ({ngos.filter((n) => n.status === 'pending').length})
+            </h2>
             <NGOTable
               ngos={ngos.filter((n) => n.status === 'pending')}
               onApprove={(id) => handleStatusChange(id, 'approved')}
@@ -290,14 +637,12 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 2: Pending Activities */}
+        {/* ─── TAB: ACTIVITIES ───────────────────────────────────────────── */}
         {tab === 'activities' && (
           <div className="animate-fade-in space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900">
-                Pending Activity Queue ({activities.length})
-              </h2>
-            </div>
+            <h2 className="text-base font-bold text-gray-900">
+              Pending Activity Queue ({activities.length})
+            </h2>
             {activities.length === 0 ? (
               <div className="card p-12 text-center text-gray-400 text-xs">No activity updates pending approval.</div>
             ) : (
@@ -315,11 +660,6 @@ const AdminDashboard = () => {
                       <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg leading-relaxed">
                         {act.description}
                       </div>
-                      {act.beneficiaryCount > 0 && (
-                        <div className="text-xs text-emerald-dark font-semibold">
-                          👥 {Number(act.beneficiaryCount).toLocaleString('en-IN')} beneficiaries reached
-                        </div>
-                      )}
                     </div>
                     <div className="flex items-center gap-2 self-start md:self-center flex-shrink-0">
                       <button onClick={() => handleActivityStatus(act._id, 'approved')} className="btn-success btn-sm text-[11px] py-1">Approve</button>
@@ -332,14 +672,12 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 3: Pending Events */}
+        {/* ─── TAB: EVENTS ───────────────────────────────────────────────── */}
         {tab === 'events' && (
           <div className="animate-fade-in space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900">
-                Pending Event Queue ({events.length})
-              </h2>
-            </div>
+            <h2 className="text-base font-bold text-gray-900">
+              Pending Event Queue ({events.length})
+            </h2>
             {events.length === 0 ? (
               <div className="card p-12 text-center text-gray-400 text-xs">No events pending approval.</div>
             ) : (
@@ -369,7 +707,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 4: All NGOs */}
+        {/* ─── TAB: ALL NGOS ─────────────────────────────────────────────── */}
         {tab === 'ngos' && (
           <div className="animate-fade-in space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -407,25 +745,27 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 3: Donations Ledger (from NGO-master) */}
+        {/* ─── TAB: DONATIONS LEDGER ─────────────────────────────────────── */}
         {tab === 'donations' && (
           <div className="animate-fade-in space-y-4">
-            <h2 className="text-base font-bold text-gray-900">
-              Public & CSR Community Donations ({donations.length})
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900">
+                District Welfare & Medical Aid Donations Ledger ({donations.length})
+              </h2>
+            </div>
             {donations.length === 0 ? (
               <div className="card p-12 text-center text-gray-400 text-xs">No donations logged yet.</div>
             ) : (
-              <div className="card overflow-hidden border border-gray-100 shadow-sm">
+              <div className="card overflow-hidden border border-gray-100 shadow-sm bg-white">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 font-semibold">
                         <th className="text-left px-5 py-3">Donor Name & Contact</th>
-                        <th className="text-left px-5 py-3">Type</th>
+                        <th className="text-left px-5 py-3">Channel / Cause</th>
                         <th className="text-left px-5 py-3">Amount / Details</th>
-                        <th className="text-left px-5 py-3">Beneficiary Fund / NGO</th>
-                        <th className="text-left px-5 py-3">Location</th>
+                        <th className="text-left px-5 py-3">Target Beneficiary</th>
+                        <th className="text-left px-5 py-3">Order / Txn ID</th>
                         <th className="text-left px-5 py-3">Date</th>
                       </tr>
                     </thead>
@@ -433,27 +773,38 @@ const AdminDashboard = () => {
                       {donations.map((d) => (
                         <tr key={d._id} className="hover:bg-gray-50/70">
                           <td className="px-5 py-3.5">
-                            <div className="font-bold text-gray-900">{d.name}</div>
-                            <div className="text-[11px] text-gray-400 font-mono">📞 {d.phone}</div>
+                            <div className="font-bold text-gray-900">
+                              {d.isAnonymous ? 'Anonymous Donor' : d.name || 'Anonymous'}
+                            </div>
+                            <div className="text-[11px] text-gray-400 font-mono">
+                              {d.phone ? `📞 ${d.phone}` : d.email || '—'}
+                            </div>
                           </td>
                           <td className="px-5 py-3.5">
                             <span className="badge bg-blue-50 text-blue-700 capitalize text-[10px]">
-                              {d.donationType}
+                              {d.targetType === 'medical_campaign' ? 'Direct Medical' : d.donationType}
                             </span>
                           </td>
                           <td className="px-5 py-3.5">
                             {d.amount ? (
-                              <span className="font-bold text-emerald-dark">₹{d.amount.toLocaleString('en-IN')}</span>
+                              <span className="font-extrabold text-emerald-800">
+                                ₹{Number(d.amount).toLocaleString('en-IN')}
+                              </span>
                             ) : (
-                              <span className="text-gray-700">{d.itemDescription || 'In-kind supply'}</span>
+                              <span className="text-gray-700">{d.itemDescription || 'In-kind'}</span>
                             )}
                           </td>
                           <td className="px-5 py-3.5 font-medium text-gray-800">
-                            {d.targetNgoName || 'District Welfare Fund'}
+                            {d.targetCampaign?.patientDisplayName || d.targetNgoName || 'District Fund'}
                           </td>
-                          <td className="px-5 py-3.5 text-gray-600">{d.location}</td>
+                          <td className="px-5 py-3.5 font-mono text-[10px] text-gray-500 truncate max-w-[140px]">
+                            {d.providerPaymentId || d.providerOrderId || d.receiptReference || '—'}
+                          </td>
                           <td className="px-5 py-3.5 text-gray-400">
-                            {new Date(d.createdAt || d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            {new Date(d.createdAt || d.date).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
                           </td>
                         </tr>
                       ))}
@@ -465,7 +816,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 4: Citizen Inquiries (from NGO-master) */}
+        {/* ─── TAB: CITIZEN INQUIRIES ────────────────────────────────────── */}
         {tab === 'contacts' && (
           <div className="animate-fade-in space-y-4">
             <h2 className="text-base font-bold text-gray-900">
@@ -476,7 +827,7 @@ const AdminDashboard = () => {
             ) : (
               <div className="space-y-3">
                 {contacts.map((c) => (
-                  <div key={c._id} className="card p-5 border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
+                  <div key={c._id} className="card p-5 border border-gray-100 flex flex-col md:flex-row justify-between gap-4 bg-white">
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900 text-sm">{c.name}</span>
@@ -515,13 +866,12 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Tab 5: Analytics */}
+        {/* ─── TAB: ANALYTICS ────────────────────────────────────────────── */}
         {tab === 'analytics' && analytics && (
           <div className="animate-fade-in space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Category Chart */}
-              {analytics.byCategory?.length > 0 ? (
-                <div className="card p-6 border border-gray-100">
+              {analytics.byCategory?.length > 0 && (
+                <div className="card p-6 border border-gray-100 bg-white">
                   <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Distribution by Focus Area</h3>
                   <p className="text-xs text-gray-400 mb-5">Number of verified NGOs operating in each sector</p>
                   <ResponsiveContainer width="100%" height={300}>
@@ -534,13 +884,10 @@ const AdminDashboard = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : (
-                <div className="card p-8 text-center text-gray-400 text-xs">No category data yet.</div>
               )}
 
-              {/* Region Pie Chart */}
-              {analytics.byRegion?.length > 0 ? (
-                <div className="card p-6 border border-gray-100">
+              {analytics.byRegion?.length > 0 && (
+                <div className="card p-6 border border-gray-100 bg-white">
                   <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Regional Geographic Distribution</h3>
                   <p className="text-xs text-gray-400 mb-5">NGO density across tehsils & village clusters</p>
                   <ResponsiveContainer width="100%" height={300}>
@@ -553,8 +900,7 @@ const AdminDashboard = () => {
                         cy="50%"
                         outerRadius={95}
                         label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        labelLine={false}
-                      >
+                        labelLine={false}>
                         {analytics.byRegion.slice(0, 8).map((_, i) => (
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
@@ -563,34 +909,344 @@ const AdminDashboard = () => {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-              ) : (
-                <div className="card p-8 text-center text-gray-400 text-xs">No region data yet.</div>
               )}
-            </div>
-
-            {/* Status Breakdown Grid */}
-            <div className="card p-6 border border-gray-100">
-              <h3 className="font-bold text-gray-900 mb-4 text-sm">Application Status Breakdown</h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-4 bg-emerald/10 rounded-xl border border-emerald/20">
-                  <div className="text-2xl md:text-3xl font-extrabold text-emerald-dark">{analytics.approvedNGOs}</div>
-                  <div className="text-xs font-semibold text-gray-700 mt-1">Verified NGOs</div>
-                </div>
-                <div className="p-4 bg-amber/10 rounded-xl border border-amber/20">
-                  <div className="text-2xl md:text-3xl font-extrabold text-amber-dark">{analytics.pendingNGOs}</div>
-                  <div className="text-xs font-semibold text-gray-700 mt-1">Pending Review</div>
-                </div>
-                <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                  <div className="text-2xl md:text-3xl font-extrabold text-red-600">{analytics.rejectedNGOs}</div>
-                  <div className="text-xs font-semibold text-gray-700 mt-1">Rejected / Inactive</div>
-                </div>
-              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* View NGO Details Modal */}
+      {/* ─── MODAL: INSPECT MEDICAL APPLICATION & SUPPORTING DOCUMENTS ─── */}
+      {inspectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative bg-white rounded-2xl shadow-glass w-full max-w-3xl max-h-[92vh] overflow-y-auto p-6 animate-slide-up space-y-5 text-xs">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+              <div>
+                <span className="badge bg-red-50 text-red-700 text-xs mb-1">
+                  Official Medical Audit Desk
+                </span>
+                <h3 className="text-xl font-bold text-gray-900">{inspectModal.patientDisplayName}</h3>
+                <div className="text-xs text-gray-500 font-mono">
+                  District Ref: {inspectModal._id} • Category: {inspectModal.conditionCategory}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectModal(null)}
+                className="text-gray-400 hover:text-gray-600 font-bold p-1">
+                ✕
+              </button>
+            </div>
+
+            {/* Private Patient & Representative Information */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/70 space-y-3">
+              <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">
+                Confidential Patient Record
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Full Legal Name</span>
+                  <span className="font-bold text-gray-900">
+                    {inspectModal.privatePatientDetails?.fullName || inspectModal.patientDisplayName}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Age</span>
+                  <span className="font-medium text-gray-800">
+                    {inspectModal.privatePatientDetails?.age || '—'} years
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Patient Phone</span>
+                  <span className="font-mono text-gray-800">
+                    {inspectModal.privatePatientDetails?.contactPhone || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Emergency Contact</span>
+                  <span className="font-mono text-gray-800">
+                    {inspectModal.privatePatientDetails?.emergencyContact || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Village / Tehsil</span>
+                  <span className="font-medium text-gray-800">
+                    {inspectModal.privatePatientDetails?.village || inspectModal.district}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Representative</span>
+                  <span className="font-medium text-gray-800">
+                    {inspectModal.representative?.name} ({inspectModal.representative?.relationship})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Medical Summary & Hospital Details */}
+            <div className="space-y-3">
+              <div>
+                <span className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider block mb-1">
+                  Diagnosis & Medical Situation
+                </span>
+                <p className="bg-gray-50 p-3 rounded-xl text-gray-700 leading-relaxed">
+                  {inspectModal.medicalSummary}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Hospital Name</span>
+                  <span className="font-bold text-primary-900">
+                    {inspectModal.hospitalDetails?.hospitalName || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Hospital Location</span>
+                  <span className="font-medium text-gray-800">
+                    {inspectModal.hospitalDetails?.hospitalLocation || inspectModal.district}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Attending Doctor</span>
+                  <span className="font-medium text-gray-800">
+                    {inspectModal.hospitalDetails?.doctorName || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Total Estimated Cost</span>
+                  <span className="font-bold text-gray-900">
+                    ₹{Number(inspectModal.hospitalDetails?.estimatedCost || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Aid Requested (Goal)</span>
+                  <span className="font-extrabold text-primary-700 text-sm">
+                    ₹{Number(inspectModal.fundingTarget).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 text-[11px] block">Already Received</span>
+                  <span className="font-medium text-emerald-800">
+                    ₹{Number(inspectModal.privatePatientDetails?.amountAlreadyReceived || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Supporting Medical Documents (Secure Download / View Links) */}
+            <div className="space-y-2">
+              <span className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider block">
+                Submitted Confidential Medical Documents ({inspectModal.supportingDocuments?.length || 0})
+              </span>
+              {!inspectModal.supportingDocuments || inspectModal.supportingDocuments.length === 0 ? (
+                <div className="p-3 bg-gray-50 text-gray-400 rounded-lg text-center text-xs">
+                  No supporting documents uploaded.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {inspectModal.supportingDocuments.map((doc) => (
+                    <div
+                      key={doc._id}
+                      className="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-lg shadow-2xs">
+                      <div className="truncate pr-2">
+                        <div className="font-bold text-gray-800 truncate">{doc.title}</div>
+                        <div className="text-[10px] text-gray-400">
+                          {doc.documentType} • {(doc.size / 1024).toFixed(0)} KB
+                        </div>
+                      </div>
+                      <a
+                        href={getPrivateDocumentUrl(inspectModal._id, doc._id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md flex-shrink-0">
+                        View / Audit ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons in Modal */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRequestDocsModal(inspectModal)}
+                  className="px-3 py-1.5 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg font-semibold">
+                  Request Documents
+                </button>
+                {inspectModal.campaignStatus === 'Paused' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleResumeMedical(inspectModal._id)}
+                    className="px-3 py-1.5 border border-blue-200 text-blue-700 hover:bg-blue-50 rounded-lg font-semibold">
+                    Resume Campaign
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPauseModal(inspectModal)}
+                    className="px-3 py-1.5 border border-orange-200 text-orange-700 hover:bg-orange-50 rounded-lg font-semibold">
+                    Pause Campaign
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {inspectModal.verificationStatus !== 'Approved' && (
+                  <button
+                    type="button"
+                    onClick={() => handleApproveMedical(inspectModal._id)}
+                    className="btn-success btn-sm text-xs px-4">
+                    Approve & Verify
+                  </button>
+                )}
+                {inspectModal.verificationStatus !== 'Rejected' && (
+                  <button
+                    type="button"
+                    onClick={() => setMedRejectModal(inspectModal)}
+                    className="btn-danger btn-sm text-xs px-4">
+                    Reject Application
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: REJECT MEDICAL APPLICATION ─────────────────────────── */}
+      {medRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative bg-white rounded-2xl shadow-glass w-full max-w-md p-6 animate-slide-up space-y-4 text-xs">
+            <h3 className="text-base font-bold text-gray-900">Reject Medical Assistance Application</h3>
+            <p className="text-gray-500">
+              Specify the official rejection reason for <strong>{medRejectModal.patientDisplayName}</strong>.
+            </p>
+            <form onSubmit={handleRejectMedical} className="space-y-3">
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. Inconclusive diagnostic bills, outside jurisdiction, duplicate claim..."
+                value={medRejectReason}
+                onChange={(e) => setMedRejectReason(e.target.value)}
+                className="input text-xs resize-none"
+              />
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setMedRejectModal(null)}
+                  className="btn-secondary btn-sm flex-1">
+                  Cancel
+                </button>
+                <button type="submit" className="btn-danger btn-sm flex-1">
+                  Confirm Rejection
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: REQUEST ADDITIONAL DOCUMENTS ───────────────────────── */}
+      {requestDocsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative bg-white rounded-2xl shadow-glass w-full max-w-md p-6 animate-slide-up space-y-4 text-xs">
+            <h3 className="text-base font-bold text-gray-900">Request Additional Documents</h3>
+            <p className="text-gray-500">
+              Specify missing clinical evidence or updated hospital estimates required from the applicant:
+            </p>
+            <form onSubmit={handleRequestDocs} className="space-y-3">
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. Please provide signed hospital estimate letter on hospital letterhead with doctor's registration number..."
+                value={requestDocsText}
+                onChange={(e) => setRequestDocsText(e.target.value)}
+                className="input text-xs resize-none"
+              />
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRequestDocsModal(null)}
+                  className="btn-secondary btn-sm flex-1">
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary btn-sm flex-1">
+                  Send Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: PAUSE SUSPICIOUS CAMPAIGN ─────────────────────────── */}
+      {pauseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative bg-white rounded-2xl shadow-glass w-full max-w-md p-6 animate-slide-up space-y-4 text-xs">
+            <h3 className="text-base font-bold text-gray-900">Pause Medical Campaign</h3>
+            <p className="text-gray-500">
+              Temporarily halts donations and hides this campaign from the public directory while suspicious
+              activity or community reports are reviewed:
+            </p>
+            <form onSubmit={handlePauseMedical} className="space-y-3">
+              <textarea
+                required
+                rows={3}
+                placeholder="State the audit observation / reason for pausing campaign..."
+                value={pauseReasonText}
+                onChange={(e) => setPauseReasonText(e.target.value)}
+                className="input text-xs resize-none"
+              />
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPauseModal(null)}
+                  className="btn-secondary btn-sm flex-1">
+                  Cancel
+                </button>
+                <button type="submit" className="btn-danger btn-sm flex-1 bg-orange-600 hover:bg-orange-700">
+                  Pause Campaign
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: NGO REJECT (Preserved from original code) ─────────── */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative bg-white rounded-2xl shadow-glass w-full max-w-md p-6 animate-slide-up">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Reject NGO Application</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Specify the official audit reason for rejecting <strong>{rejectModal.ngoName}</strong>:
+            </p>
+            <textarea
+              rows={3}
+              placeholder="e.g. Incomplete registration certificates, outside district jurisdiction..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="input resize-none mb-4 text-xs"
+            />
+            <div className="flex gap-2.5">
+              <button onClick={() => setRejectModal(null)} className="btn-secondary btn-sm flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                id="confirm-reject-btn"
+                onClick={() => handleStatusChange(rejectModal._id, 'rejected', rejectReason)}
+                className="btn-danger btn-sm flex-1 justify-center">
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: VIEW NGO DETAILS (Preserved from original code) ────── */}
       {viewDetailsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setViewDetailsModal(null)} />
@@ -605,9 +1261,7 @@ const AdminDashboard = () => {
                   Reg No: {viewDetailsModal.registrationNumber}
                 </div>
               </div>
-              <button
-                onClick={() => setViewDetailsModal(null)}
-                className="text-gray-400 hover:text-gray-600 p-1">
+              <button onClick={() => setViewDetailsModal(null)} className="text-gray-400 hover:text-gray-600 p-1">
                 ✕
               </button>
             </div>
@@ -642,34 +1296,8 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                <div>
-                  <div className="text-xs text-gray-400">Official Contact Email</div>
-                  <div className="font-medium text-gray-800 text-xs break-all">{viewDetailsModal.contactEmail || '—'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-400">Phone Number</div>
-                  <div className="font-medium text-gray-800 text-xs">{viewDetailsModal.contactPhone || '—'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-400">Website</div>
-                  <div className="font-medium text-primary-700 text-xs break-all">
-                    {viewDetailsModal.website ? (
-                      <a href={viewDetailsModal.website} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                        {viewDetailsModal.website}
-                      </a>
-                    ) : '—'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-400">Registered Office Address</div>
-                  <div className="font-medium text-gray-800 text-xs">{viewDetailsModal.address || '—'}</div>
-                </div>
-              </div>
             </div>
 
-            {/* Modal Actions */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-6 mt-6 border-t border-gray-100">
               <Link
                 to={`/ngos/${viewDetailsModal._id}`}
@@ -685,49 +1313,7 @@ const AdminDashboard = () => {
                     Approve & Verify
                   </button>
                 )}
-                {viewDetailsModal.status !== 'rejected' && (
-                  <button
-                    onClick={() => {
-                      const tgt = viewDetailsModal;
-                      setViewDetailsModal(null);
-                      setRejectModal(tgt);
-                    }}
-                    className="btn-danger btn-sm text-xs">
-                    Reject Application
-                  </button>
-                )}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reject Modal */}
-      {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setRejectModal(null)} />
-          <div className="relative bg-white rounded-2xl shadow-glass w-full max-w-md p-6 animate-slide-up">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Reject NGO Application</h3>
-            <p className="text-xs text-gray-500 mb-4">
-              Specify the official audit reason for rejecting <strong>{rejectModal.ngoName}</strong>:
-            </p>
-            <textarea
-              rows={3}
-              placeholder="e.g. Incomplete registration certificates, outside district jurisdiction..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="input resize-none mb-4 text-xs"
-            />
-            <div className="flex gap-2.5">
-              <button onClick={() => setRejectModal(null)} className="btn-secondary btn-sm flex-1 justify-center">
-                Cancel
-              </button>
-              <button
-                id="confirm-reject-btn"
-                onClick={() => handleStatusChange(rejectModal._id, 'rejected', rejectReason)}
-                className="btn-danger btn-sm flex-1 justify-center">
-                Confirm Rejection
-              </button>
             </div>
           </div>
         </div>
@@ -736,11 +1322,11 @@ const AdminDashboard = () => {
   );
 };
 
-// Sub-component: NGOTable
+// Sub-component: NGOTable (Preserved from original code)
 const NGOTable = ({ ngos, onApprove, onReject, onViewDetails, actionLoading, emptyMsg }) => {
   if (!ngos?.length) {
     return (
-      <div className="card p-12 text-center text-gray-400 border border-gray-100">
+      <div className="card p-12 text-center text-gray-400 border border-gray-100 bg-white">
         <div className="text-3xl mb-2">🏛️</div>
         <p className="font-medium text-xs md:text-sm">{emptyMsg}</p>
       </div>
@@ -748,7 +1334,7 @@ const NGOTable = ({ ngos, onApprove, onReject, onViewDetails, actionLoading, emp
   }
 
   return (
-    <div className="card overflow-hidden border border-gray-100 shadow-sm">
+    <div className="card overflow-hidden border border-gray-100 shadow-sm bg-white">
       <div className="overflow-x-auto">
         <table className="w-full text-xs md:text-sm">
           <thead>
@@ -800,19 +1386,17 @@ const NGOTable = ({ ngos, onApprove, onReject, onViewDetails, actionLoading, emp
                     </button>
                     {ngo.status !== 'approved' && (
                       <button
-                        id={`approve-${ngo._id}`}
                         onClick={() => onApprove(ngo._id)}
                         disabled={actionLoading[ngo._id]}
-                        className="btn-success btn-sm text-[11px] py-1 px-2.5">
+                        className="btn-success btn-sm text-xs py-1">
                         Approve
                       </button>
                     )}
                     {ngo.status !== 'rejected' && (
                       <button
-                        id={`reject-${ngo._id}`}
                         onClick={() => onReject(ngo)}
                         disabled={actionLoading[ngo._id]}
-                        className="btn-danger btn-sm text-[11px] py-1 px-2.5">
+                        className="btn-danger btn-sm text-xs py-1">
                         Reject
                       </button>
                     )}

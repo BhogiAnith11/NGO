@@ -15,10 +15,10 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error('Please provide name, email, password, and role');
   }
 
-  const validRoles = ['ngo', 'donor', 'volunteer'];
+  const validRoles = ['ngo', 'donor', 'volunteer', 'patient'];
   if (!validRoles.includes(role)) {
     res.status(400);
-    throw new Error('Invalid role. Choose ngo, donor, or volunteer');
+    throw new Error('Invalid role. Choose ngo, donor, volunteer, or patient');
   }
 
   const userExists = await User.findOne({ email });

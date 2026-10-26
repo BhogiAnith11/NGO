@@ -15,12 +15,14 @@ const adminRoutes = require('./routes/adminRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const eventRoutes = require('./routes/eventRoutes');
+const medicalAssistanceRoutes = require('./routes/medicalAssistanceRoutes');
 
 // Models (for public stats)
 const NGO = require('./models/NGO');
 const Activity = require('./models/Activity');
 const Donation = require('./models/Donation');
 const Event = require('./models/Event');
+const MedicalAssistance = require('./models/MedicalAssistance');
 
 dotenv.config();
 
@@ -48,7 +50,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files statically
+// SECURITY: Strictly deny unrestricted public access to private medical records
+app.use('/uploads/private_medical', (req, res) => {
+  res.status(403).json({
+    success: false,
+    message: 'Access denied. Private medical files can only be accessed through authorized endpoints.',
+  });
+});
+
+// Serve uploaded public files (photos, logos) statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
@@ -60,6 +70,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/medical-assistance', medicalAssistanceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -69,7 +80,18 @@ app.get('/api/health', (req, res) => {
 // Public platform stats — no auth required
 app.get('/api/stats', async (req, res) => {
   try {
-    const [totalNGOs, approvedNGOs, focusAreaAgg, regionAgg, beneficiaryAgg, totalDonations, totalEvents] = await Promise.all([
+    const [
+      totalNGOs,
+      approvedNGOs,
+      focusAreaAgg,
+      regionAgg,
+      beneficiaryAgg,
+      totalDonations,
+      totalEvents,
+      totalMedicalCampaigns,
+      approvedMedicalCampaigns,
+      medicalDonationAgg,
+    ] = await Promise.all([
       NGO.countDocuments(),
       NGO.countDocuments({ status: 'approved' }),
       NGO.aggregate([
@@ -89,6 +111,12 @@ app.get('/api/stats', async (req, res) => {
       ]),
       Donation.countDocuments(),
       Event.countDocuments(),
+      MedicalAssistance.countDocuments(),
+      MedicalAssistance.countDocuments({ verificationStatus: 'Approved' }),
+      Donation.aggregate([
+        { $match: { transactionStatus: 'successful', targetType: 'medical_campaign' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
     ]);
 
     res.json({
@@ -101,6 +129,9 @@ app.get('/api/stats', async (req, res) => {
         beneficiariesReached: beneficiaryAgg[0]?.total ?? 0,
         totalDonations,
         totalEvents,
+        totalMedicalCampaigns,
+        approvedMedicalCampaigns,
+        totalMedicalAidRaised: medicalDonationAgg[0]?.total ?? 0,
       },
     });
   } catch (err) {

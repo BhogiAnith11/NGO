@@ -1,34 +1,42 @@
-# 🌍 District NGO Directory & Social Impact Platform (Merged Edition)
+# 🌍 District NGO Directory & Emergency Medical Assistance Platform
 
-A unified full-stack **MERN** (MongoDB + Express + React + Node.js) web platform combining the **District NGO Directory & Verification System** with **NGOConnect's Donation, Charity Drives, and Citizen Helpdesk features**.
+A unified full-stack **MERN** (MongoDB + Express + React + Node.js) web platform combining the **District NGO Directory & Verification System** with **Emergency Medical Assistance & Direct Donations**, Charity Drives, and Citizen Helpdesk features.
 
 ---
 
-## ✨ Unified Features
+## ✨ Features
 
-### 🏛️ 1. District NGO Directory & Verification
+### 🩺 1. Emergency Medical Assistance & Direct Donations (NEW)
+- **Patient Registration**: Injured people, patients, or authorized family members request financial assistance for medical emergencies.
+- **Privacy Protection**: Confidential storage of private clinical diagnostic records, identity proofs, and personal contact details, with customizable public display names.
+- **District Admin Verification**: Medical applications enter a `Pending` state and undergo official nodal officer review, document requests, approvals, or rejections.
+- **Direct Online Donations with Razorpay**: Verified online contributions with server-side HMAC SHA256 signature verification, idempotency protection against duplicate webhook deliveries, and instant downloadable donation receipts.
+- **Fundraising Progress & Tracking**: Real-time calculation:
+  - `Amount Raised = Sum of Verified Successful Donations - Applicable Refunds`
+  - `Remaining Amount = Maximum of 0 and Funding Target - Amount Raised`
+  - `Progress Percentage = Minimum of 100 and (Amount Raised / Funding Target) × 100`
+- **Patient Dashboard**: Manage submitted medical aid requests, upload requested hospital estimate letters, track confirmed funds, and publish recovery updates.
+- **Donor Dashboard**: Overview of confirmed medical contributions, supported patients, transaction history, and official digital receipts.
+- **Medical Audit Queue in Admin Panel**: Review medical documents, inspect clinical diagnoses, request extra evidence, pause suspicious campaigns, and view community reports.
+
+### 🏛️ 2. District NGO Directory & Verification
 - **Verified Directory**: Search and filter NGOs by focus area, operational talukas/villages, and official verification status.
 - **2-Step Registration**: Public NGOs register official legal credentials (Trust/Society Reg No, PAN, target tehsils) into a pending queue.
 - **Official Verification Workflow**: District Social Welfare Nodal Officers review, inspect, and approve or reject submissions with official remarks.
-- **Interactive Service Coverage Map**: Embedded Google Maps & OpenStreetMap views of coverage territories and operational centers.
 - **Direct Connect & Proposal Inbox**: Donors, CSR entities, and volunteers can send direct partnership proposals to verified NGOs.
 
-### 💳 2. Public Donations & In-Kind Relief (Merged from NGO-master)
-- **Multi-Category Giving**: Support with **Money** (₹250, ₹500, ₹1000, ₹2500, ₹5000, custom) or **In-Kind Items** (Food & Nutrition, Clothing & Warmth, Educational Supplies, Medical Kits).
+### 💳 3. Public Donations & In-Kind Relief
+- **Multi-Category Giving**: Support with **Money** or **In-Kind Items** (Food & Nutrition, Clothing, Educational Supplies, Medical Kits).
 - **Target NGO or General Fund**: Route contributions directly to a specific verified NGO or the District General Welfare Relief Fund.
-- **Official Acknowledgment Receipt**: Instant receipt generation with donor name, item breakdown, and tracking numbers.
-- **Admin Donations Ledger**: District authorities monitor all incoming monetary and material donations.
 
-### 📅 3. Community Charity Drives & Events (Merged from NGO-master)
-- **Charity Drives Calendar**: Browse upcoming Mega Food Drives, Free Medical Camps, Literacy Workshops, Afforestation Drives, and Animal Care drives.
+### 📅 4. Community Charity Drives & Events
+- **Charity Drives Calendar**: Browse upcoming Mega Food Drives, Free Medical Camps, Literacy Workshops, and Afforestation Drives.
 - **Volunteer RSVP**: Citizens can register as field volunteers for upcoming events with 1 click.
-- **Event Management**: Verified NGOs and administrators post welfare drives with locations, dates, and volunteer quotas.
 
-### ✉️ 4. Citizen Helpdesk & Grievance Portal (Merged from NGO-master)
-- **Inquiry & Feedback Form**: Citizens, CSR heads, and non-profits submit official messages and grievance requests directly to the District Nodal Helpdesk.
-- **Grievance Resolution**: Administrators can track, mark resolved, and reply directly via email.
+### ✉️ 5. Citizen Helpdesk & Grievance Portal
+- **Inquiry & Feedback Form**: Citizens submit messages and grievance requests directly to the District Nodal Helpdesk.
 
-### 📊 5. District Analytics & Data Export
+### 📊 6. District Analytics & Data Export
 - **Interactive Visualizations**: Recharts Bar & Pie charts for sector-wise and taluka-wise NGO distribution.
 - **CSV Dataset Export**: One-click official CSV export for district administration planning.
 
@@ -38,12 +46,35 @@ A unified full-stack **MERN** (MongoDB + Express + React + Node.js) web platform
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 18 + Vite + Tailwind CSS v3 + React Router DOM v6 |
+| **Frontend** | React 19 + Vite + Tailwind CSS v3 + React Router DOM v7 |
 | **Backend** | Node.js + Express.js + Mongoose |
+| **Payment Gateway** | Razorpay (Test Mode & Webhook Signature Verification) |
 | **Database** | MongoDB Atlas / Local MongoDB |
-| **Security & Auth** | JWT (JSON Web Tokens) + bcryptjs password hashing |
-| **Visuals & Charts** | Recharts + Google Maps Embed API / OpenStreetMap |
-| **File Storage** | Multer local storage / Public static assets |
+| **Security & Auth** | JWT + bcryptjs + HMAC SHA256 Signature Verification |
+| **Visuals & Charts** | Recharts |
+| **File Storage** | Multer with segregated private medical document storage |
+
+---
+
+## ⚙️ Environment Variables
+
+### Backend (`backend/.env`)
+```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=ngo_dir_jwt_s3cr3t_2026_district_platform_secure_key
+PORT=5000
+CLIENT_URL=http://localhost:5173
+
+# Razorpay Test Configuration (Optional - Defaults to test simulator if omitted)
+RAZORPAY_KEY_ID=rzp_test_DistrictWelfare2026
+RAZORPAY_KEY_SECRET=district_platform_test_secret_2026
+RAZORPAY_WEBHOOK_SECRET=district_webhook_secret_2026
+```
+
+### Frontend (`frontend/.env`)
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
 ---
 
@@ -54,8 +85,14 @@ A unified full-stack **MERN** (MongoDB + Express + React + Node.js) web platform
 cd backend
 npm install
 
-# Run database seeder to populate all verified NGOs, drives, donations, and admin user
+# Seed NGO Directory data
 node seed.js
+
+# Seed Emergency Medical Assistance data
+node seed-medical.js
+
+# Run integration tests (validates Razorpay flow & medical calculations)
+node test-medical-integration.js
 
 # Start backend server (Port 5000)
 npm run dev
@@ -66,30 +103,16 @@ npm run dev
 cd frontend
 npm install
 
-# Start Vite dev server (Port 5173 / 5174)
+# Start Vite development server
 npm run dev
 ```
 
 ---
 
-## 🔑 Pre-configured Accounts (from `seed.js`)
+## 🔑 Default Credentials
 
-| Role | Email | Password | Access Portals |
+| Role | Email | Password | Access / Dashboard |
 |---|---|---|---|
-| **District Nodal Admin** | `admin@district.gov.in` | `Admin@2026` | `/admin` (Approvals, Donations Ledger, Inquiries, Analytics, CSV) |
-| **Health NGO** | `aarogya.trust@gmail.com` | `Test@1234` | `/dashboard` (Profile, Medical camps, CSR Inbox) |
-| **Education NGO** | `vidyasetu.ngo@gmail.com` | `Test@1234` | `/dashboard` (Profile, Smart school projects, Volunteer inbox) |
-| **CSR Corporate Donor** | `rajesh.sharma@tata.com` | `Test@1234` | `/`, `/donate`, `/events` (Direct Connect & Contributions) |
-| **Volunteer Citizen** | `pooja.kulkarni@gmail.com` | `Test@1234` | `/`, `/events`, `/donate` (Event RSVPs) |
-
----
-
-## 🌐 Routes Summary
-
-- `/` — District Directory, Welfare Pillars, Live Stats, Process Workflow, FAQ
-- `/donate` — Financial & In-Kind Material Giving Portal
-- `/events` — Upcoming Charity Drives, Medical Camps & Volunteer RSVPs
-- `/contact` — District Helpdesk & Grievance Redressal
-- `/ngos/:id` — Full NGO Profile with Map, Activity Feed, and Connect Modal
-- `/dashboard` — NGO Portal (Edit Profile, Post Activity, View Connect Requests)
-- `/admin` — Social Welfare Admin Panel (Approvals, Records, Donations Ledger, Inquiries, Analytics, CSV Export)
+| **District Nodal Admin** | `admin@district.gov.in` | `Admin@2026` | `/admin` (Medical Audit, NGO Approvals, Donations Ledger) |
+| **Patient / Family** | `rahul.sharma@example.com` | `Admin@2026` | `/patient-dashboard` (Medical Requests, Recovery Updates) |
+| **Sample NGO** | `info@aarogya.org` | `Admin@2026` | `/dashboard` (My NGO Profile & Activities) |
